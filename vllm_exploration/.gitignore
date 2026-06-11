@@ -81,9 +81,6 @@ hf_cache/
 .torch/
 torch_compile_cache/
 
-# Upstream vLLM source clone (for local reading; not part of this repo)
-vllm-src/
-
 # Secrets/env
 .env
 .env.*
