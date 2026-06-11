@@ -1,0 +1,17 @@
+asr:
+  model_size: small
+  device: auto
+  compute_type: auto
+
+llm:
+  backend: hf
+  hf_model: Qwen/Qwen2.5-1.5B-Instruct
+  hf_device: auto
+  hf_torch_dtype: auto
+  hf_max_new_tokens: 256
+  temperature: 0.3
+  system_prompt: "You are a concise voice assistant. Answer in one or two short sentences."
+
+tts:
+  voice: en-us
+  rate_wpm: 175

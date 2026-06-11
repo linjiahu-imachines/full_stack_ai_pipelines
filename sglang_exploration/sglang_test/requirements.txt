@@ -1,0 +1,7 @@
+# Prefer the full installer: ../setup_sglang_env.sh (Jetson Thor / aarch64 + CUDA 12 user libs + stub).
+# Minimal pins if you install manually into ../sglang_venv:
+sglang==0.5.9
+nvidia-cuda-runtime-cu12>=12.4,<13
+nvidia-cuda-nvrtc-cu12
+nvidia-cublas-cu12
+nvidia-cuda-nvcc-cu12

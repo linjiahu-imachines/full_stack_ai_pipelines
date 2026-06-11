@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "omni-voice"
+version = "0.1.0"
+description = "Project 2 — voice-to-voice (Omni) experiments with per-turn profiling."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "speech_ai_exp" }]
+dependencies = [
+    "numpy>=1.24",
+    "soundfile>=0.12",
+]
+
+[project.optional-dependencies]
+moshi = ["moshi>=0.2.5", "torch>=2.2", "torchaudio>=2.2", "huggingface-hub>=0.23"]
+experiment = ["pyyaml>=6.0"]
+sidecar = ["faster-whisper>=1.0"]
+dev = ["pytest>=7.4", "ruff>=0.4"]
+
+[project.scripts]
+omni-voice-run = "omni_voice.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

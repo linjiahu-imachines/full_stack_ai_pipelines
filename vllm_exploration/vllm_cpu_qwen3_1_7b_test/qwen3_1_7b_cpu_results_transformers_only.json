@@ -1,0 +1,59 @@
+{
+  "meta": {
+    "started_at_utc": "2026-04-07T17:07:57.132250+00:00",
+    "model": "Qwen/Qwen3-1.7B",
+    "batch_sizes": [
+      1
+    ],
+    "max_new_tokens": 8,
+    "vllm_max_num_seqs": 2048,
+    "transformers_only": true,
+    "experiment_names": [
+      "qwen3-1.7B without vLLM"
+    ],
+    "system_info": {
+      "platform": {
+        "system": "Linux",
+        "release": "6.8.12-tegra",
+        "machine": "aarch64",
+        "python": "3.12.3"
+      },
+      "cpu": {
+        "vendor": "ARM",
+        "model_name": "-",
+        "architecture": "aarch64",
+        "sockets": "-",
+        "cores_per_socket": null,
+        "threads_per_core": "1",
+        "logical_cpus": "14",
+        "physical_cores": "14",
+        "max_mhz": "2601.0000",
+        "min_mhz": "54.0000"
+      },
+      "cache": {
+        "l1d": "896 KiB (14 instances)",
+        "l1i": "896 KiB (14 instances)",
+        "l2": "14 MiB (14 instances)",
+        "l3": null
+      },
+      "memory": {
+        "total_gb": 122.82,
+        "available_gb": 65.81
+      }
+    }
+  },
+  "by_batch_size": {
+    "1": {
+      "qwen3-1.7B without vLLM": {
+        "engine": "qwen3-1.7B without vLLM",
+        "model": "Qwen/Qwen3-1.7B",
+        "batch_size": 1,
+        "max_new_tokens": 8,
+        "micro_batch_size": 1,
+        "time_s": 4.48,
+        "per_prompt_ms": 4480.13,
+        "throughput_prompts_per_s": 0.22
+      }
+    }
+  }
+}

@@ -1,0 +1,22 @@
+# Chatbot preset — Ollama LLM + Kokoro-82M TTS (same ASR as demo_staged_kokoro.yaml).
+# Requires: ollama serve + ollama pull <ollama_model>
+# Use: export STAGED_CONFIG=/path/to/this/file && uvicorn app.main:app ...
+
+asr:
+  model_size: small
+  device: cpu
+  compute_type: int8
+
+llm:
+  backend: ollama
+  ollama_host: http://127.0.0.1:11434
+  ollama_model: llama3.2
+  max_tokens: 256
+  temperature: 0.3
+  system_prompt: "You are a concise voice assistant in a multi-turn conversation. Use earlier turns in the chat when relevant. Answer in one or two short sentences suitable for text-to-speech."
+
+tts:
+  backend: kokoro
+  kokoro_lang_code: a
+  kokoro_voice: af_heart
+  kokoro_speed: 1.0

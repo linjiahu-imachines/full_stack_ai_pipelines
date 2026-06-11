@@ -1,0 +1,17 @@
+# Project 2 — Moshi batch turn (voice-to-voice)
+omni:
+  backend: moshi
+
+moshi:
+  hf_repo: kyutai/moshiko-pytorch-bf16
+  device: auto   # cuda | cpu | auto
+  temp: 0.8
+  temp_text: 0.7
+  input_silence_s: 2.0   # pause after user speech (turn-taking)
+  response_s: 3.0        # seconds of model reply audio to generate
+  # max_frames: 50         # optional cap on input frames only
+
+sidecar:
+  whisper: true
+  model: small
+  device: cpu

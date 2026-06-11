@@ -1,0 +1,91 @@
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.dylib
+*.pyd
+.Python
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Virtual environments
+venv/
+.venv/
+env/
+*/venv/
+*/.venv/
+sglang_cpu_venv/
+sglang_venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Build/dist
+build/
+dist/
+*.whl
+
+# Logs/runtime
+*.log
+logs/
+nohup.out
+*.pid
+
+# Test artifacts and generated results
+results/
+outputs/
+reports/
+benchmark/results/
+*.jsonl
+
+# Model weights and large binaries
+*.bin
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+*.gguf
+*.tar
+*.tar.gz
+*.zip
+*.7z
+
+# Data/cache
+data/
+datasets/
+.cache/
+cache/
+tmp/
+temp/
+
+# Hugging Face / model caches
+.huggingface/
+huggingface/
+hf_cache/
+
+# vLLM / torch / compiler caches (shared stack with SGLang experiments)
+.nv/
+.triton/
+.torch/
+torch_compile_cache/
+
+# Secrets/env
+.env
+.env.*
+*.pem
+*.key
+*.crt

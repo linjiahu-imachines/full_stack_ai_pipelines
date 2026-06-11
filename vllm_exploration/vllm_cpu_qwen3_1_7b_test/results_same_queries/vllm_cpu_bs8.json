@@ -1,0 +1,13 @@
+{
+  "engine": "qwen3-1.7B with vLLM",
+  "model": "Qwen/Qwen3-1.7B",
+  "batch_size": 8,
+  "num_prompts": 512,
+  "prompts_file": "/home/linhu/projects/sglang_exploration/sglang_test/data/queries_512.jsonl",
+  "max_new_tokens": 32,
+  "max_num_seqs": 8,
+  "init_time_s": 13.54,
+  "time_s": 519.92,
+  "per_prompt_ms": 1015.46,
+  "throughput_prompts_per_s": 0.98
+}

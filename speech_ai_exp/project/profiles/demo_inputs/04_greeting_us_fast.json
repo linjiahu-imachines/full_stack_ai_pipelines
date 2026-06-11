@@ -1,0 +1,29 @@
+{
+  "audio_path": "/home/linhu/projects/speech_ai_exp/project/data/demo_inputs/04_greeting_us_fast.wav",
+  "audio_duration_s": 2.126031746031746,
+  "asr_s": 4.421133186668158,
+  "asr_rtf": 2.079523598328311,
+  "llm_ttft_s": 0.4070369452238083,
+  "llm_generation_s": 0.7351279151625931,
+  "llm_chars": 53,
+  "llm_tokens_per_s_est": 18.024074078413154,
+  "tts_s": 0.022860635071992874,
+  "transcript": "Hello, can you help me with something?",
+  "reply_text": "Of course! What would you like assistance with today?",
+  "output_wav_path": "/home/linhu/projects/speech_ai_exp/project/audio/out/demo_inputs/04_greeting_us_fast_reply.wav",
+  "meta": {
+    "asr": {
+      "asr_language": "en",
+      "asr_probability": 0.8777835369110107,
+      "sample_rate": 22050,
+      "audio_duration_s": 2.126031746031746
+    },
+    "llm": {
+      "backend": "hf"
+    },
+    "tts": {
+      "tts_engine": "espeak-ng",
+      "tts_voice": "en-us"
+    }
+  }
+}

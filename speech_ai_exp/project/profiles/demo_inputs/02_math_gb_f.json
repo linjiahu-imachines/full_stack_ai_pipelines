@@ -1,0 +1,29 @@
+{
+  "audio_path": "/home/linhu/projects/speech_ai_exp/project/data/demo_inputs/02_math_gb_f.wav",
+  "audio_duration_s": 1.8415419501133787,
+  "asr_s": 4.411729922983795,
+  "asr_rtf": 2.3956716938824973,
+  "llm_ttft_s": 0.4061126229353249,
+  "llm_generation_s": 0.6729327132925391,
+  "llm_chars": 20,
+  "llm_tokens_per_s_est": 7.430163374783634,
+  "tts_s": 0.02516390196979046,
+  "transcript": "What is 10 minus 4?",
+  "reply_text": "10 minus 4 equals 6.",
+  "output_wav_path": "/home/linhu/projects/speech_ai_exp/project/audio/out/demo_inputs/02_math_gb_f_reply.wav",
+  "meta": {
+    "asr": {
+      "asr_language": "en",
+      "asr_probability": 0.9388182759284973,
+      "sample_rate": 22050,
+      "audio_duration_s": 1.8415419501133787
+    },
+    "llm": {
+      "backend": "hf"
+    },
+    "tts": {
+      "tts_engine": "espeak-ng",
+      "tts_voice": "en-us"
+    }
+  }
+}

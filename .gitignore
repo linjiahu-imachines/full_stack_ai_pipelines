@@ -1,0 +1,121 @@
+# Root monorepo .gitignore — all four projects are tracked; only
+# regenerable artifacts and secrets are excluded.
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+
+# Virtual environments (regenerable via pip/uv)
+venv/
+.venv/
+env/
+*_venv/
+*/venv/
+*/.venv/
+sglang_cpu_venv/
+sglang_venv/
+vllm_cpu_venv/
+
+# Logs / runtime
+*.log
+logs/
+nohup.out
+*.pid
+
+# Build / dist
+build/
+dist/
+*.whl
+bin/
+lib/
+lib64/
+
+# Test artifacts
+results/
+outputs/
+reports/
+benchmark/results/
+*.jsonl
+
+# Model weights and large binaries
+*.bin
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+*.gguf
+*.tar
+*.tar.gz
+*.zip
+*.7z
+
+# Data / cache
+data/
+datasets/
+.cache/
+cache/
+tmp/
+temp/
+.huggingface/
+huggingface/
+hf_cache/
+.nv/
+.triton/
+.torch/
+torch_compile_cache/
+
+# Secrets
+.env
+.env.*
+*.pem
+*.key
+*.crt
+
+# iminn-tools: large dev environment and build outputs (regenerable)
+iminn-tools/dev_env/
+iminn-tools/results/
+iminn-tools/output/
+iminn-tools/eval_tools/
+iminn-tools/scratch
+iminn-tools/containers/deps/*/*/
+!iminn-tools/containers/deps/*/dep.json
+!iminn-tools/containers/deps/*/install.sh
+
+# speech_ai_exp: generated audio outputs
+speech_ai_exp/project2/audio/out/*.wav
+speech_ai_exp/project2/profiles/*.json
+speech_ai_exp/project2/demo/latest/*.wav
+speech_ai_exp/project2/demo/latest/index.html
+
+# Compiled native artifacts
+*.a
+*.so
+*.so.*
+*.dylib
+*.dll
+*.o
+*.obj
+
+# CMake / ninja
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+*.ninja

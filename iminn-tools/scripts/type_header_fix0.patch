@@ -1,0 +1,12 @@
+diff --git a/src/tim/transform/permute_vector.h b/src/tim/transform/permute_vector.h
+index 4fd3bd4..8c343e4 100644
+--- a/src/tim/transform/permute_vector.h
++++ b/src/tim/transform/permute_vector.h
+@@ -29,6 +29,7 @@
+ #include <memory>
+ #include <vector>
+ #include <string>
++#include <cstdint>
+ 
+ namespace tim {
+ namespace transform {

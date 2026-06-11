@@ -1,0 +1,14 @@
+# Mini-Omni: understand speech (A1_T2), speak the short answer (eSpeak = aligned audio)
+omni:
+  backend: mini_omni
+
+mini_omni:
+  mode: a1t2_t1a2
+  speech_align: espeak   # espeak | model (model T1_A2 often misaligns with text)
+  tts_voice: en-us
+  tts_rate_wpm: 165
+
+sidecar:
+  whisper: true
+  model: small
+  device: cpu

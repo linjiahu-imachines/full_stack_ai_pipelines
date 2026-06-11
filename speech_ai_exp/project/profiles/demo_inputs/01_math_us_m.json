@@ -1,0 +1,29 @@
+{
+  "audio_path": "/home/linhu/projects/speech_ai_exp/project/data/demo_inputs/01_math_us_m.wav",
+  "audio_duration_s": 1.5993197278911564,
+  "asr_s": 4.294530903920531,
+  "asr_rtf": 2.6852234916049262,
+  "llm_ttft_s": 0.4330884339287877,
+  "llm_generation_s": 0.8780477647669613,
+  "llm_chars": 40,
+  "llm_tokens_per_s_est": 11.388902063493157,
+  "tts_s": 0.024341933894902468,
+  "transcript": "What in 2 plus 3?",
+  "reply_text": "In mathematics, the sum of 2 and 3 is 5.",
+  "output_wav_path": "/home/linhu/projects/speech_ai_exp/project/audio/out/demo_inputs/01_math_us_m_reply.wav",
+  "meta": {
+    "asr": {
+      "asr_language": "en",
+      "asr_probability": 0.9345685839653015,
+      "sample_rate": 22050,
+      "audio_duration_s": 1.5993197278911564
+    },
+    "llm": {
+      "backend": "hf"
+    },
+    "tts": {
+      "tts_engine": "espeak-ng",
+      "tts_voice": "en-us"
+    }
+  }
+}

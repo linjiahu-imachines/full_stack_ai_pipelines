@@ -1,0 +1,99 @@
+{
+  "meta": {
+    "started_at_utc": "2026-03-17T17:07:16.945603+00:00",
+    "model": "Qwen/Qwen3-1.7B",
+    "single_batch_size": 1,
+    "large_batch_size": 500,
+    "max_new_tokens": 30,
+    "experiment_names": [
+      "qwen3-1.7B without vLLM",
+      "qwen3-1.7B with vLLM"
+    ],
+    "system_info": {
+      "platform": {
+        "system": "Linux",
+        "release": "6.17.0-1008-azure",
+        "machine": "x86_64",
+        "python": "3.13.5"
+      },
+      "cpu": {
+        "vendor": "GenuineIntel",
+        "model_name": "INTEL(R) XEON(R) PLATINUM 8573C",
+        "architecture": "x86_64",
+        "sockets": "1",
+        "cores_per_socket": "4",
+        "threads_per_core": "2",
+        "logical_cpus": "8",
+        "physical_cores": "4",
+        "max_mhz": "2300.0000",
+        "min_mhz": "800.0000"
+      },
+      "cache": {
+        "l1d": "192 KiB (4 instances)",
+        "l1i": "128 KiB (4 instances)",
+        "l2": "8 MiB (4 instances)",
+        "l3": "260 MiB (1 instance)"
+      },
+      "memory": {
+        "total_gb": 31.34,
+        "available_gb": 29.74
+      }
+    }
+  },
+  "single_query": {
+    "qwen3-1.7B without vLLM": {
+      "engine": "qwen3-1.7B without vLLM",
+      "model": "Qwen/Qwen3-1.7B",
+      "batch_size": 1,
+      "max_new_tokens": 30,
+      "micro_batch_size": 1,
+      "time_s": 2.68,
+      "per_prompt_ms": 2679.52,
+      "throughput_prompts_per_s": 0.37
+    },
+    "qwen3-1.7B with vLLM": {
+      "engine": "qwen3-1.7B with vLLM",
+      "model": "Qwen/Qwen3-1.7B",
+      "batch_size": 1,
+      "max_new_tokens": 30,
+      "max_num_seqs": 1,
+      "init_time_s": 8.9,
+      "time_s": 2.16,
+      "per_prompt_ms": 2156.26,
+      "throughput_prompts_per_s": 0.46
+    }
+  },
+  "batch_500_query": {
+    "qwen3-1.7B without vLLM": {
+      "engine": "qwen3-1.7B without vLLM",
+      "model": "Qwen/Qwen3-1.7B",
+      "batch_size": 500,
+      "max_new_tokens": 30,
+      "micro_batch_size": 25,
+      "time_s": 77.64,
+      "per_prompt_ms": 155.29,
+      "throughput_prompts_per_s": 6.44
+    },
+    "qwen3-1.7B with vLLM": {
+      "engine": "qwen3-1.7B with vLLM",
+      "model": "Qwen/Qwen3-1.7B",
+      "batch_size": 500,
+      "max_new_tokens": 30,
+      "max_num_seqs": 256,
+      "init_time_s": 9.04,
+      "time_s": 25.4,
+      "per_prompt_ms": 50.8,
+      "throughput_prompts_per_s": 19.68
+    }
+  },
+  "ratios": {
+    "single_query": {
+      "time_ratio_with_over_without_vllm": 0.806,
+      "throughput_ratio_with_over_without_vllm": 1.243
+    },
+    "batch_500_query": {
+      "time_ratio_with_over_without_vllm": 0.327,
+      "throughput_ratio_with_over_without_vllm": 3.056
+    }
+  }
+}

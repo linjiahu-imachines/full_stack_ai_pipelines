@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Neutral run profile for staged vs voice-to-voice comparison",
+  "type": "object",
+  "required": ["stack", "audio_path", "e2e_wall_s"],
+  "properties": {
+    "stack": { "type": "string", "enum": ["staged", "voice_to_voice", "moshi", "mini_omni"] },
+    "backend": { "type": "string" },
+    "audio_path": { "type": "string" },
+    "audio_duration_s": { "type": "number" },
+    "e2e_wall_s": { "type": "number" },
+    "ttfa_s": { "type": "number" },
+    "output_wav_path": { "type": ["string", "null"] },
+    "transcript": { "type": "string" },
+    "reply_text": { "type": "string" },
+    "inner_text": { "type": "string" },
+    "meta": { "type": "object" }
+  }
+}

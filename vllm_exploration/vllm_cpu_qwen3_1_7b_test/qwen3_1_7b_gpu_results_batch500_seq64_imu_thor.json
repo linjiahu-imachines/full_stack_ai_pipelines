@@ -1,0 +1,61 @@
+{
+  "meta": {
+    "started_at_utc": "2026-04-08T20:42:22.882042+00:00",
+    "model": "Qwen/Qwen3-1.7B",
+    "batch_size": 500,
+    "max_new_tokens": 30,
+    "max_num_seqs_requested": 64,
+    "max_num_seqs_effective": 64,
+    "experiment": "vLLM GPU (batch 500, max_num_seqs sweep); same prompts as CPU harness",
+    "system_info": {
+      "platform": {
+        "system": "Linux",
+        "release": "6.8.12-tegra",
+        "machine": "aarch64",
+        "python": "3.12.3"
+      },
+      "cpu": {
+        "vendor": "ARM",
+        "model_name": "-",
+        "architecture": "aarch64",
+        "sockets": "-",
+        "cores_per_socket": null,
+        "threads_per_core": "1",
+        "logical_cpus": "14",
+        "physical_cores": "14",
+        "max_mhz": "2601.0000",
+        "min_mhz": "54.0000"
+      },
+      "cache": {
+        "l1d": "896 KiB (14 instances)",
+        "l1i": "896 KiB (14 instances)",
+        "l2": "14 MiB (14 instances)",
+        "l3": null
+      },
+      "memory": {
+        "total_gb": 122.82,
+        "available_gb": 76.89
+      },
+      "gpu": {
+        "available": true,
+        "device_0_name": "NVIDIA Thor",
+        "device_0_capability": [
+          11,
+          0
+        ],
+        "torch": "2.10.0+cu130"
+      }
+    }
+  },
+  "qwen3-1.7B with vLLM (GPU)": {
+    "engine": "qwen3-1.7B with vLLM (GPU)",
+    "model": "Qwen/Qwen3-1.7B",
+    "batch_size": 500,
+    "max_new_tokens": 30,
+    "max_num_seqs": 64,
+    "init_time_s": 14.48,
+    "time_s": 10.34,
+    "per_prompt_ms": 20.67,
+    "throughput_prompts_per_s": 48.37
+  }
+}

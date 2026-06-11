@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Staged voice demo</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 56rem; margin: 2rem auto; padding: 0 1rem; }
+    h1 { font-size: 1.35rem; margin-bottom: 0.25rem; }
+    .subtitle { color: #555; margin-bottom: 1.5rem; }
+    .pipeline { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;
+                margin: 1rem 0 1.5rem; font-size: 0.95rem; color: #333; }
+    .pipeline span { padding: 0.35rem 0.65rem; background: #e8e8ec; border-radius: 6px; }
+    .pipeline .arrow { background: none; padding: 0; color: #888; }
+    section { margin: 1.25rem 0; padding: 1rem 1.1rem; background: #f4f4f5; border-radius: 8px;
+               border-left: 4px solid #6366f1; }
+    section.stage-tts { border-left-color: #059669; }
+    .stage-head { font-weight: 700; color: #1e1b4b; margin-bottom: 0.35rem; }
+    .stage-meta { font-size: 0.85rem; color: #666; margin-bottom: 0.6rem; }
+    .text { font-size: 1.1rem; line-height: 1.5; white-space: pre-wrap; }
+    audio { width: 100%; margin-top: 0.5rem; }
+    table { border-collapse: collapse; font-size: 0.9rem; width: 100%; }
+    td, th { padding: 0.35rem 0.75rem; text-align: left; border-bottom: 1px solid #ddd; }
+    .e2e { font-weight: 600; }
+  </style>
+</head>
+<body>
+  <h1>Project 1 — Staged pipeline demo</h1>
+  <p class="subtitle">Three explicit stages: speech → text → text → speech. Each stage is timed separately.</p>
+  <div class="pipeline">
+    <span>Input WAV</span><span class="arrow">→</span>
+    <span>1 ASR</span><span class="arrow">→</span>
+    <span>2 LLM</span><span class="arrow">→</span>
+    <span>3 TTS</span><span class="arrow">→</span>
+    <span>Reply WAV</span>
+  </div>
+
+  <section>
+    <div class="stage-head">Stage 1 — ASR (speech → text)</div>
+    <div class="stage-meta">backend: faster-whisper · 4.021s</div>
+    <div class="text">What in 2 plus 3?</div>
+    <audio controls src="input.wav"></audio>
+    <p class="stage-meta" style="margin-top:0.5rem">↑ original user recording</p>
+  </section>
+
+  <section>
+    <div class="stage-head">Stage 2 — LLM (text → text)</div>
+    <div class="stage-meta">backend: hf · TTFT 0.469s · total 0.823s</div>
+    <div class="text">The sum of 2 and 3 is 5.</div>
+  </section>
+
+  <section class="stage-tts">
+    <div class="stage-head">Stage 3 — TTS (text → speech)</div>
+    <div class="stage-meta">backend: espeak-ng · 0.060s</div>
+    <audio controls src="reply.wav"></audio>
+    <p class="stage-meta" style="margin-top:0.5rem">↑ synthesized assistant reply</p>
+  </section>
+
+  <section>
+    <div class="stage-head">Timings (seconds)</div>
+    <table>
+      <tr><th>1 ASR</th><td>4.021</td></tr>
+      <tr><th>2 LLM TTFT</th><td>0.469</td></tr>
+      <tr><th>2 LLM total</th><td>0.823</td></tr>
+      <tr><th>3 TTS</th><td>0.060</td></tr>
+      <tr class="e2e"><th>End-to-end (sum)</th><td>4.903</td></tr>
+    </table>
+  </section>
+</body>
+</html>

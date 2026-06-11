@@ -1,0 +1,40 @@
+diff --git a/cmake/onnxruntime_unittests.cmake b/cmake/onnxruntime_unittests.cmake
+index 9797d8019f..563327348b 100644
+--- a/cmake/onnxruntime_unittests.cmake
++++ b/cmake/onnxruntime_unittests.cmake
+@@ -1596,10 +1596,10 @@ if (NOT CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+   endif()
+ 
+   file(GLOB custom_op_src ${custom_op_src_patterns})
+-  onnxruntime_add_shared_library(custom_op_library ${custom_op_src})
+-  target_compile_options(custom_op_library PRIVATE ${custom_op_lib_option})
+-  target_include_directories(custom_op_library PRIVATE ${REPO_ROOT}/include ${custom_op_lib_include})
+-  target_link_libraries(custom_op_library PRIVATE ${GSL_TARGET} ${custom_op_lib_link})
++  # onnxruntime_add_shared_library(custom_op_library ${custom_op_src})
++  # target_compile_options(custom_op_library PRIVATE ${custom_op_lib_option})
++  # target_include_directories(custom_op_library PRIVATE ${REPO_ROOT}/include ${custom_op_lib_include})
++  # target_link_libraries(custom_op_library PRIVATE ${GSL_TARGET} ${custom_op_lib_link})
+ 
+   if(UNIX)
+     if (APPLE)
+@@ -1614,7 +1614,7 @@ if (NOT CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+                     "$<$<NOT:$<COMPILE_LANGUAGE:CUDA>>:/wd26409>")
+     endif()
+   endif()
+-  set_property(TARGET custom_op_library APPEND_STRING PROPERTY LINK_FLAGS ${ONNXRUNTIME_CUSTOM_OP_LIB_LINK_FLAG})
++  # set_property(TARGET custom_op_library APPEND_STRING PROPERTY LINK_FLAGS ${ONNXRUNTIME_CUSTOM_OP_LIB_LINK_FLAG})
+   #ON AIX, to call dlopen on custom_op_library, we need to generate this library as shared object .so file.
+   #Latest cmake behavior is changed and  cmake will remove shared object .so file after generating the shared archive.
+   #To prevent that, making AIX_SHARED_LIBRARY_ARCHIVE as OFF for custom_op_library.
+diff --git a/onnxruntime/core/optimizer/transpose_optimization/optimizer_api.h b/onnxruntime/core/optimizer/transpose_optimization/optimizer_api.h
+index e4d59ea732..a82e8014b8 100644
+--- a/onnxruntime/core/optimizer/transpose_optimization/optimizer_api.h
++++ b/onnxruntime/core/optimizer/transpose_optimization/optimizer_api.h
+@@ -11,6 +11,7 @@
+ #include <unordered_map>
+ #include <unordered_set>
+ #include <vector>
++#include <stdint.h>
+ 
+ namespace onnx_transpose_optimization {
+ namespace api {

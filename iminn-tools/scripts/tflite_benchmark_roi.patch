@@ -1,0 +1,69 @@
+diff --git a/tensorflow/lite/tools/benchmark/benchmark_model.cc b/tensorflow/lite/tools/benchmark/benchmark_model.cc
+index 27dd3de3e3b..2d9590d15f5 100644
+--- a/tensorflow/lite/tools/benchmark/benchmark_model.cc
++++ b/tensorflow/lite/tools/benchmark/benchmark_model.cc
+@@ -31,6 +31,50 @@ limitations under the License.
+ #include "tensorflow/lite/tools/benchmark/benchmark_utils.h"
+ #include "tensorflow/lite/tools/logging.h"
+ 
++//ROI CSR
++#define ROI_CSR_PERMAFROST_PLUGIN 0x8c1
++#define ROI_CSR_PERMAFROST_CTRL 0x8c3
++
++//ROI CSR STRING
++#define ROI_CSR_STRING_PERMAFROST_PLUGIN "0x8c1"
++#define ROI_CSR_STRING_PERMAFROST_QEMU "0x8c2"
++#define ROI_CSR_STRING_PERMAFROST_CTRL "0x8c3"
++
++//ROI MASK. Can be used with ROI_MATCH_PERMAFROST to check if a 32 bit instruction is an roi permafrost command
++#define ROI_MASK_PERMAFROST 0xffffefff
++
++//ROI MATCH. Can be used with ROI_MASK_PERMAFROST to check if a 32 bit instruction is an roi permafrost command
++#define ROI_MATCH_PERMAFROST_PLUGIN 0x8c106073
++#define ROI_MATCH_PERMAFROST_CTRL 0x8c306073
++
++//ROI on/off mask. 0=on (csr set imm), 1=off (csr clear imm). If the main ROI MASK/MATCH match, this can be used to see if it is an off or on command
++#define ROI_MASK_ON_OFF_PERMAFROST 0x00001000
++
++//ROI BEGIN Sequence for Permafrost in RISCV
++#if defined(__riscv)
++#define ROI_BEGIN_PERMAFROST_PLUGIN asm volatile("csrrsi zero, " ROI_CSR_STRING_PERMAFROST_PLUGIN ", 0");
++#define ROI_BEGIN_PERMAFROST_QEMU asm volatile("csrrsi zero, " ROI_CSR_STRING_PERMAFROST_QEMU ", 0");
++#define ROI_BEGIN_PERMAFROST_CTRL asm volatile("csrrsi zero, " ROI_CSR_STRING_PERMAFROST_CTRL ", 0");
++
++//ROI END Sequence for Permafrost in RISCV
++#define ROI_END_PERMAFROST_PLUGIN asm volatile("csrrci zero, " ROI_CSR_STRING_PERMAFROST_PLUGIN ", 0");
++#define ROI_END_PERMAFROST_QEMU asm volatile("csrrci zero, " ROI_CSR_STRING_PERMAFROST_QEMU ", 0");
++#define ROI_END_PERMAFROST_CTRL asm volatile("csrrci zero, " ROI_CSR_STRING_PERMAFROST_CTRL ", 0");
++#else
++#define ROI_BEGIN_PERMAFROST_PLUGIN 
++#define ROI_BEGIN_PERMAFROST_QEMU 
++#define ROI_BEGIN_PERMAFROST_CTRL 
++
++//ROI END Sequence for Permafrost in RISCV
++#define ROI_END_PERMAFROST_PLUGIN 
++#define ROI_END_PERMAFROST_QEMU 
++#define ROI_END_PERMAFROST_CTRL 
++#endif
++
++//Trigger uint8_t values for Permafrost CTRL
++#define PERMAFROST_ROI_CTRL_BEGIN_KEY 42
++#define PERMAFROST_ROI_CTRL_END_KEY 44
++
+ namespace tflite {
+ namespace benchmark {
+ using tensorflow::StatWithPercentiles;
+@@ -242,7 +286,13 @@ StatWithPercentiles<int64_t> BenchmarkModel::Run(int min_num_times,
+     ResetInputsAndOutputs();
+     listeners_.OnSingleRunStart(run_type);
+     int64_t start_us = profiling::time::NowMicros();
++    if (std::getenv("IMI_ROI_SIM")) {
++        ROI_BEGIN_PERMAFROST_CTRL;
++    }
+     TfLiteStatus status = RunImpl();
++    if (std::getenv("IMI_ROI_SIM")) {
++        ROI_END_PERMAFROST_CTRL;
++    }
+     int64_t end_us = profiling::time::NowMicros();
+     listeners_.OnSingleRunEnd();
+     int64_t run_duration_us = end_us - start_us;

@@ -1,0 +1,14 @@
+# Install order on Jetson: use install_jetson_gpu_deps.sh so torch is CUDA-enabled
+# before vLLM. Plain `pip install -r` on aarch64 often resolves torch to +cpu.
+#
+# vLLM's native extension is linked to libcudart.so.12; PyTorch cu130 wheels ship CUDA 13
+# runtime. Install CUDA 12 runtime libs so `from vllm import LLM` works.
+nvidia-cuda-runtime-cu12>=12.4,<13
+vllm
+transformers
+torch
+torchvision
+torchaudio
+pytest
+pytest-benchmark
+psutil

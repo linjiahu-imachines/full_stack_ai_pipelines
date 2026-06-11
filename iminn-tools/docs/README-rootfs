@@ -1,0 +1,64 @@
+###################################
+# Setting up your own File System #
+###################################
+
+# This is a **generic** recipe for building a Linux disk rootfs image (`.img`) for
+# QEMU system-mode. For **GLM** specifically, note that the model is many GB:
+# a small (e.g., 2GB) rootfs image is **not** large enough to embed the model.
+# In `iminn-tools`, we typically keep large artifacts (models, repo) on the host
+# and access them from the guest via **9p** (`/mnt/shared`).
+
+# Create a drive with name "rootfs.img" with 2GB (2048 x 1M) space
+dd if=/dev/zero of=rootfs.img bs=1M count=2048
+mkfs.ext4 rootfs.img
+
+# Mount the drive into a local folder mnt/
+sudo mkdir -p mnt
+sudo mount -o loop rootfs.img mnt
+
+# If you already have a folder with extracted cpio files then copy the folder's content into mnt/
+sudo cp -a <existing_initramfs_folder>/* mnt/
+# Otherwise setup a fresh file system
+cd mnt
+sudo cpio -idmv < /projects/performance/linux_boot/riscv-rss-sdk/build/linux/usr/initramfs_data.cpio
+
+# 1. Add you benchmark files in /benchmarks folder
+# 2. Add command to run your benchmark in /benchmarks/run.sh
+
+# Unmount the drive from mnt/ folder
+sync
+sudo umount mnt
+
+#####################################
+# Running benchmarks in system mode #
+#####################################
+
+# Command to run Linux boot on QEMU (example)
+#
+# In this repo, you can use:
+#   QEMU=/home/linhu/repo/iminn-tools/dev_env/csqemu-v9/install-sys-local/bin/qemu-system-riscv64
+#   OPENSBI=/home/linhu/repo/iminn-tools/dev_env/csqemu-v9/pc-bios/opensbi-riscv64-generic-fw_dynamic.bin
+
+/home/linhu/repo/iminn-tools/dev_env/csqemu-v9/install-sys-local/bin/qemu-system-riscv64 \
+  -cpu imicpu-v1 -machine virt -nographic -m 2048 \
+  -bios /home/linhu/repo/iminn-tools/dev_env/csqemu-v9/pc-bios/opensbi-riscv64-generic-fw_dynamic.bin \
+  -kernel /projects/performance/linux_boot/linux/arch/riscv/boot/Image \
+  -drive file=rootfs.img,format=raw,id=hd0 \
+  -device virtio-blk-device,drive=hd0 \
+  -append "root=/dev/vda console=ttyS0"
+
+#############################################
+# Optional: system-mode SimPoint BB profiling #
+#############################################
+#
+# If you want SimPoint-style BB vector generation from **system-mode** QEMU,
+# you can add the BB profiler plugin:
+#
+#   -plugin /home/linhu/repo/iminn-tools/dev_env/csqemu-v9/install-sys-local/plugins/libsimpbbprof.so,interval=10000000,bbfile=/path/on/host/qemu_simpoint.bb,bblogfile=/path/on/host/BB.log
+#
+# Then run the host-side SimPoint clustering:
+#
+#   /home/linhu/repo/iminn-tools/dev_env/simpoint/bin/simpoint -maxK 30 \
+#     -saveSimpoints /path/on/host/simpoints \
+#     -saveSimpointWeights /path/on/host/weights \
+#     -loadFVFile /path/on/host/qemu_simpoint.bb

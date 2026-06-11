@@ -1,0 +1,29 @@
+{
+  "audio_path": "/home/linhu/projects/speech_ai_exp/project/data/demo_inputs/03_weather_us_f.wav",
+  "audio_duration_s": 1.8799546485260772,
+  "asr_s": 4.292794791050255,
+  "asr_rtf": 2.28345656870813,
+  "llm_ttft_s": 0.4580386742018163,
+  "llm_generation_s": 1.3587753172032535,
+  "llm_chars": 163,
+  "llm_tokens_per_s_est": 29.99024156832279,
+  "tts_s": 0.02294426504522562,
+  "transcript": "What is the weather like today?",
+  "reply_text": "I'm sorry, I don't have real-time information on current weather conditions. You can check local weather updates through your preferred news source or weather app.",
+  "output_wav_path": "/home/linhu/projects/speech_ai_exp/project/audio/out/demo_inputs/03_weather_us_f_reply.wav",
+  "meta": {
+    "asr": {
+      "asr_language": "en",
+      "asr_probability": 0.8907508850097656,
+      "sample_rate": 22050,
+      "audio_duration_s": 1.8799546485260772
+    },
+    "llm": {
+      "backend": "hf"
+    },
+    "tts": {
+      "tts_engine": "espeak-ng",
+      "tts_voice": "en-us"
+    }
+  }
+}

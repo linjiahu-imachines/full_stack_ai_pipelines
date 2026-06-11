@@ -1,0 +1,29 @@
+{
+  "audio_path": "/home/linhu/projects/speech_ai_exp/project/data/demo_inputs/05_time_us_slow.wav",
+  "audio_duration_s": 2.342947845804989,
+  "asr_s": 4.204793778248131,
+  "asr_rtf": 1.7946595720330474,
+  "llm_ttft_s": 0.4124052431434393,
+  "llm_generation_s": 1.3069240748882294,
+  "llm_chars": 155,
+  "llm_tokens_per_s_est": 29.649771355932803,
+  "tts_s": 0.02721773600205779,
+  "transcript": "What time is it right now?",
+  "reply_text": "I'm sorry, I don't have the ability to provide real-time information about current times as my responses are based on historical data and not live updates.",
+  "output_wav_path": "/home/linhu/projects/speech_ai_exp/project/audio/out/demo_inputs/05_time_us_slow_reply.wav",
+  "meta": {
+    "asr": {
+      "asr_language": "en",
+      "asr_probability": 0.9271268844604492,
+      "sample_rate": 22050,
+      "audio_duration_s": 2.342947845804989
+    },
+    "llm": {
+      "backend": "hf"
+    },
+    "tts": {
+      "tts_engine": "espeak-ng",
+      "tts_voice": "en-us"
+    }
+  }
+}

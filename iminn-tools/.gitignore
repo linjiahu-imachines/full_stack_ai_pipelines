@@ -1,0 +1,244 @@
+# This .gitignore file is derived partially from halide:
+# https://github.com/halide/Halide/blob/main/.gitignore
+
+
+# NOTE: one can debug these rules with the following commands:
+#
+# $ git clean -ffdx
+# $ find . -not -path './.git/*' | git check-ignore --stdin --no-index
+#
+# The first command will delete all files that are ignored by Git (be warned!).
+# The second command will print all files that are checked in, but _would be_
+# ignored under the rules in this file. Such files should either be explicitly
+# added to the exclusions at the bottom of this file, or the rule excluding them
+# should be refined.
+
+# Generator executables
+*.generator
+
+# Generator outputs
+*.bc
+*.featurization
+*.ll
+*.py.cpp
+*.pytorch.h
+*.registration.cpp
+*.s
+*.schedule.h
+*.stmt
+*.stmt.html
+*.stub.h
+
+# Linker scripts
+py_*.ldscript*
+
+# Runtime modules
+_initmod*.cpp
+
+**/test/generator/*.h
+compile_log.txt
+stderr.txt
+stdout.txt
+
+################################################################################
+## Common build artifacts
+
+# Directories
+bin/
+distrib/
+lib/
+lib64/
+share/
+
+# Binaries
+*.a
+*.cubin
+*.dll
+*.dylib
+*.exe
+*.lib
+*.o
+*.obj
+*.so
+*.so.*
+a.out
+
+# Compiler intermediates / debugging info
+*.[ip]db
+*.[pg]ch
+*.d
+*.dSYM
+
+# Package files
+*.deb
+*.tar.gz
+*.tgz
+*.tar
+*.zip
+
+################################################################################
+## Temporary and swap files
+
+temp/
+tmp/
+
+.*.swp
+.\#*
+.DS_Store
+*.log
+*.tmp
+*.txt.user*
+*~
+\#*\#
+
+
+################################################################################
+## CMake
+
+# User-specific configuration files
+CMakeUserPresets.json
+
+# Common build directory names
+build*/
+cmake[-_]build*/
+
+# Generated config files
+*-config-version.cmake
+*-config.cmake
+*Config.cmake
+*ConfigVersion.cmake
+
+# Build directory contents
+_deps/
+.cmake/
+cmake_install.cmake
+CMakeCache.txt
+CMakeFiles/
+compile_commands.json
+CPack*.cmake
+CTest*.cmake
+CTest*.txt
+install_manifest.txt
+
+# Ninja files
+*.ninja*
+
+# Package managers
+vcpkg_installed/
+
+################################################################################
+## IDE directories and metadata
+
+# Visual Studio
+.vs/
+out/
+
+CMakeSettings.json
+
+# XCode
+*.xcworkspacedata
+tools/objc/*.mobileprovision
+tools/objc/BUILD
+xcuserdata
+
+# CLion
+.idea/
+
+# VSCode
+.vscode/
+
+# TextMate
+.tm_properties
+
+# Sublime Text
+.tags
+.tags_sorted_by_file
+*.sublime-*
+
+# Vim
+.clang_complete
+
+# NeoVim + clangd
+.cache
+
+# Emacs
+tags
+TAGS
+
+# all eval_tools directories
+eval_tools/
+
+################################################################################
+## Python
+
+# Common virtual environment directory names
+.venv/
+venv/
+
+# Python binary caches
+__pycache__
+*.py[cod]
+
+# Python package build artifacts
+*.egg-info/
+*.whl
+MANIFEST.in
+dist/
+
+# Dependencies
+containers/deps/*/*/
+!containers/deps/*/dep.json
+!containers/deps/*/install.sh
+dev_env/*/
+!dev_env/rvv_tests
+dev_env/rvv_tests/rvv-tests-build
+!dev_env/playground
+dev_env/playground/*build
+
+# Results directories
+results/
+!results/placeholder
+
+################################################################################
+# Scratch files
+scratch
+test*.sh
+test*.py
+test*.txt
+scratch*.sh
+scratch*.py
+scratch*.txt
+
+################################################################################
+# Compiled Object files
+
+# --- CRITICAL BLOCKS FOR YOUR PROJECT ---
+
+# 1. Block the "build" folder (This kills the 1.1GB file in IMachines_Spike)
+build/
+*/build/
+
+# 2. Block Large Static/Shared Libraries (Global)
+*.a
+*.so
+*.so.*
+*.dylib
+*.lib
+
+# 3. Block AI Models (llama.cpp)
+*.gguf
+*.pth
+*.bin
+
+# 4. Block Compiler Executables (riscv-env)
+# Using double star to catch nested folders
+dev_env/riscv-env/**/bin/
+dev_env/riscv-env/**/lib/
+dev_env/riscv-env/**/libexec/
+dev_env/riscv-env/**/share/
+
+# 5. Block Intermediate Object Files
+*.o
+*.obj
+
+

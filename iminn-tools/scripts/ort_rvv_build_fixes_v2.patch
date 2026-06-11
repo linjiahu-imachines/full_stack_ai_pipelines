@@ -1,0 +1,478 @@
+diff --git a/cmake/deps.txt b/cmake/deps.txt
+index 9f81a674a9..a1bb05e276 100644
+--- a/cmake/deps.txt
++++ b/cmake/deps.txt
+@@ -31,7 +31,7 @@ fxdiv;https://github.com/Maratyszcza/FXdiv/archive/63058eff77e11aa15bf531df5dd34
+ google_benchmark;https://github.com/google/benchmark/archive/refs/tags/v1.8.5.zip;cd47d3d272faf353600c8cc2fdec2b52d6f69177
+ googletest;https://github.com/google/googletest/archive/refs/tags/v1.15.0.zip;9d2d0af8d77ac726ea55d44a8fa727ec98311349
+ #xnnpack 2024.09.04
+-googlexnnpack;https://github.com/google/XNNPACK/archive/fe98e0b93565382648129271381c14d6205255e3.zip;14f61dcf17cec2cde34ba2dcf61d6f24bf6059f3
++googlexnnpack;https://github.com/google/XNNPACK/archive/f1eb75b8d807d86c77ee70bc81d50b90c4aff005.zip;b1f326d3e7e355e0f2a573f2175da417f32d3251
+ json;https://github.com/nlohmann/json/archive/refs/tags/v3.11.3.zip;5e88795165cc8590138d1f47ce94ee567b85b4d6
+ microsoft_gsl;https://github.com/microsoft/GSL/archive/refs/tags/v4.0.0.zip;cf368104cd22a87b4dd0c80228919bb2df3e2a14
+ microsoft_wil;https://github.com/microsoft/wil/archive/refs/tags/v1.0.230629.1.zip;e4a542a323c070376f7c2d1973d0f7ddbc1d2fa5
+@@ -48,9 +48,9 @@ protoc_linux_x86;https://github.com/protocolbuffers/protobuf/releases/download/v
+ protoc_linux_aarch64;https://github.com/protocolbuffers/protobuf/releases/download/v21.12/protoc-21.12-linux-aarch_64.zip;df9d45470b0b8cf939dd2f0ec6b88e9cafc4d617
+ protoc_mac_universal;https://github.com/protocolbuffers/protobuf/releases/download/v21.12/protoc-21.12-osx-universal_binary.zip;23710c3d1c2036d8d65a6a22234372fa2d7af9ef
+ psimd;https://github.com/Maratyszcza/psimd/archive/072586a71b55b7f8c584153d223e95687148a900.zip;1f5454b01f06f9656b77e4a5e2e31d7422487013
+-pthreadpool;https://github.com/google/pthreadpool/archive/4e80ca24521aa0fb3a746f9ea9c3eaa20e9afbb0.zip;bd4ea65c8292801e9555b527a0ecbb2e0092c917
++pthreadpool;https://github.com/google/pthreadpool/archive/3c39478e76e25e450c0a78dd140ade23ea8e24df.zip;c3a2fab6493848d0b4c9fdde2d048c8fe7d615ae
+ pybind11;https://github.com/pybind/pybind11/archive/refs/tags/v2.13.6.zip;f780292da9db273c8ef06ccf5fd4b623624143e9
+-pytorch_cpuinfo;https://github.com/pytorch/cpuinfo/archive/8a1772a0c5c447df2d18edf33ec4603a8c9c04a6.zip;85bf8a60dae026b99b6ccd78606c85ed83bfb2cd
++pytorch_cpuinfo;https://github.com/pytorch/cpuinfo/archive/8a9210069b5a37dd89ed118a783945502a30a4ae.zip;a7be0fc5ddfbebb35d2628bf1b4e7f1fea5c2561
+ re2;https://github.com/google/re2/archive/refs/tags/2024-07-02.zip;646e1728269cde7fcef990bf4a8e87b047882e88
+ safeint;https://github.com/dcleblanc/SafeInt/archive/refs/tags/3.0.28.zip;23f252040ff6cb9f1fd18575b32fa8fb5928daac
+ tensorboard;https://github.com/tensorflow/tensorboard/archive/373eb09e4c5d2b3cc2493f0949dc4be6b6a45e81.zip;67b833913605a4f3f499894ab11528a702c2b381
+diff --git a/cmake/external/emsdk b/cmake/external/emsdk
+index 074211759c..d49219d03a 160000
+--- a/cmake/external/emsdk
++++ b/cmake/external/emsdk
+@@ -1 +1 @@
+-Subproject commit 074211759c17c646164d3271ca1d155cc174f78e
++Subproject commit d49219d03a41cd12f95a33ba84273c20d41fd350
+diff --git a/cmake/external/onnx b/cmake/external/onnx
+index b8baa84466..54b72a5edd 160000
+--- a/cmake/external/onnx
++++ b/cmake/external/onnx
+@@ -1 +1 @@
+-Subproject commit b8baa8446686496da4cc8fda09f2b6fe65c2a02c
++Subproject commit 54b72a5edd399eb096ee09fecdef03201e9bde89
+diff --git a/cmake/external/onnxruntime_external_deps.cmake b/cmake/external/onnxruntime_external_deps.cmake
+index 0e0083af9e..b78ddf3332 100644
+--- a/cmake/external/onnxruntime_external_deps.cmake
++++ b/cmake/external/onnxruntime_external_deps.cmake
+@@ -558,7 +558,7 @@ if (onnxruntime_USE_XNNPACK)
+      ENDIF()
+      ADD_LIBRARY(xnnpack STATIC IMPORTED)
+      find_library(xnnpack_LIBRARY NAMES XNNPACK)
+-     find_library(microkernels_prod_LIBRARY NAMES microkernels-prod)
++     find_library(microkernels_prod_LIBRARY NAMES xnnpack-microkernels-prod)
+      find_package(unofficial-pthreadpool CONFIG REQUIRED)
+ 
+      target_include_directories(xnnpack INTERFACE "${XNNPACK_HDR}")
+diff --git a/cmake/external/xnnpack.cmake b/cmake/external/xnnpack.cmake
+index d0ab770053..c994e7e15a 100644
+--- a/cmake/external/xnnpack.cmake
++++ b/cmake/external/xnnpack.cmake
+@@ -90,7 +90,7 @@ onnxruntime_fetchcontent_makeavailable(googlexnnpack)
+ set(XNNPACK_DIR ${googlexnnpack_SOURCE_DIR})
+ set(XNNPACK_INCLUDE_DIR ${XNNPACK_DIR}/include)
+ 
+-set(onnxruntime_EXTERNAL_LIBRARIES_XNNPACK XNNPACK microkernels-prod pthreadpool)
++set(onnxruntime_EXTERNAL_LIBRARIES_XNNPACK XNNPACK xnnpack-microkernels-prod pthreadpool)
+ if(ORT_TARGET_PROCESSOR MATCHES "^arm64.*" AND NOT CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+   list(APPEND onnxruntime_EXTERNAL_LIBRARIES_XNNPACK kleidiai)
+ endif()
+diff --git a/cmake/onnxruntime_unittests.cmake b/cmake/onnxruntime_unittests.cmake
+index 5ec174b43e..afcceb6ff2 100644
+--- a/cmake/onnxruntime_unittests.cmake
++++ b/cmake/onnxruntime_unittests.cmake
+@@ -1597,10 +1597,10 @@ if (NOT CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+   endif()
+ 
+   file(GLOB custom_op_src ${custom_op_src_patterns})
+-  onnxruntime_add_shared_library(custom_op_library ${custom_op_src})
+-  target_compile_options(custom_op_library PRIVATE ${custom_op_lib_option})
+-  target_include_directories(custom_op_library PRIVATE ${REPO_ROOT}/include ${custom_op_lib_include})
+-  target_link_libraries(custom_op_library PRIVATE ${GSL_TARGET} ${custom_op_lib_link})
++  # onnxruntime_add_shared_library(custom_op_library ${custom_op_src})
++  # target_compile_options(custom_op_library PRIVATE ${custom_op_lib_option})
++  # target_include_directories(custom_op_library PRIVATE ${REPO_ROOT}/include ${custom_op_lib_include})
++  # target_link_libraries(custom_op_library PRIVATE ${GSL_TARGET} ${custom_op_lib_link})
+ 
+   if(UNIX)
+     if (APPLE)
+@@ -1615,7 +1615,7 @@ if (NOT CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+                     "$<$<NOT:$<COMPILE_LANGUAGE:CUDA>>:/wd26409>")
+     endif()
+   endif()
+-  set_property(TARGET custom_op_library APPEND_STRING PROPERTY LINK_FLAGS ${ONNXRUNTIME_CUSTOM_OP_LIB_LINK_FLAG})
++  # set_property(TARGET custom_op_library APPEND_STRING PROPERTY LINK_FLAGS ${ONNXRUNTIME_CUSTOM_OP_LIB_LINK_FLAG})
+   #ON AIX, to call dlopen on custom_op_library, we need to generate this library as shared object .so file.
+   #Latest cmake behavior is changed and  cmake will remove shared object .so file after generating the shared archive.
+   #To prevent that, making AIX_SHARED_LIBRARY_ARCHIVE as OFF for custom_op_library.
+diff --git a/onnxruntime/core/optimizer/transpose_optimization/optimizer_api.h b/onnxruntime/core/optimizer/transpose_optimization/optimizer_api.h
+index e4d59ea732..a82e8014b8 100644
+--- a/onnxruntime/core/optimizer/transpose_optimization/optimizer_api.h
++++ b/onnxruntime/core/optimizer/transpose_optimization/optimizer_api.h
+@@ -11,6 +11,7 @@
+ #include <unordered_map>
+ #include <unordered_set>
+ #include <vector>
++#include <stdint.h>
+ 
+ namespace onnx_transpose_optimization {
+ namespace api {
+diff --git a/onnxruntime/core/providers/xnnpack/math/gemm.cc b/onnxruntime/core/providers/xnnpack/math/gemm.cc
+index a3ff3b585a..9b78e94312 100644
+--- a/onnxruntime/core/providers/xnnpack/math/gemm.cc
++++ b/onnxruntime/core/providers/xnnpack/math/gemm.cc
+@@ -139,7 +139,6 @@ Status Gemm::PrePack(const Tensor& tensor, int input_idx, AllocatorPtr,
+ 
+   // flags - 1 - for no transpose - 0 for transpose
+   uint32_t flags = trans_B_ == CblasTrans ? 0 : XNN_FLAG_TRANSPOSE_WEIGHTS;
+-  auto code_cache = GetCodeCache();
+   auto weights_cache = GetWeightsCache();
+   xnn_status status = xnn_status::xnn_status_uninitialized;
+   struct xnn_operator* p = nullptr;
+@@ -159,7 +158,7 @@ Status Gemm::PrePack(const Tensor& tensor, int input_idx, AllocatorPtr,
+         bias_data,                                                   // const float* bias,
+         foutput_min, foutput_max,
+         flags,
+-        code_cache, weights_cache,
++        weights_cache,
+         &p);
+   } else if (op_compute_type_ == OpComputeType::op_compute_type_fp16) {
+     const MLFloat16* bias_data = nullptr;
+@@ -175,7 +174,7 @@ Status Gemm::PrePack(const Tensor& tensor, int input_idx, AllocatorPtr,
+         bias_data,                                                   // const float* bias,
+         foutput_min, foutput_max,
+         flags,
+-        code_cache, weights_cache,
++        weights_cache,
+         &p);
+   }
+ 
+diff --git a/onnxruntime/core/providers/xnnpack/math/matmul.cc b/onnxruntime/core/providers/xnnpack/math/matmul.cc
+index f574238195..c80a859ee1 100644
+--- a/onnxruntime/core/providers/xnnpack/math/matmul.cc
++++ b/onnxruntime/core/providers/xnnpack/math/matmul.cc
+@@ -103,10 +103,8 @@ Status MatMul::PrePack(const Tensor& tensor, int input_idx, AllocatorPtr alloc,
+   }
+ 
+ #ifdef XNN_CACHE_ENABLE
+-  xnn_code_cache_t code_cache = GetCodeCache();
+   xnn_weights_cache_t weight_cache = GetWeightsCache();
+ #else
+-  xnn_code_cache_t code_cache = nullptr;
+   xnn_weights_cache_t weight_cache = nullptr;
+ #endif
+ 
+@@ -123,7 +121,6 @@ Status MatMul::PrePack(const Tensor& tensor, int input_idx, AllocatorPtr alloc,
+         foutput_min,
+         foutput_max,
+         flags,
+-        code_cache,
+         weight_cache,
+         &p);
+   } else if (op_type_ == OpComputeType::op_compute_type_fp16) {
+@@ -137,7 +134,6 @@ Status MatMul::PrePack(const Tensor& tensor, int input_idx, AllocatorPtr alloc,
+         foutput_min,
+         foutput_max,
+         flags,
+-        code_cache,
+         weight_cache,
+         &p);
+   }
+diff --git a/onnxruntime/core/providers/xnnpack/nn/average_pool.cc b/onnxruntime/core/providers/xnnpack/nn/average_pool.cc
+index f320274f65..3f76527960 100644
+--- a/onnxruntime/core/providers/xnnpack/nn/average_pool.cc
++++ b/onnxruntime/core/providers/xnnpack/nn/average_pool.cc
+@@ -17,7 +17,6 @@ namespace {
+ Status CreateXnnpackKernel(const PoolAttributes& pool_attrs,
+                            const std::optional<std::pair<float, float>>& clip_min_max,
+                            struct xnn_operator*& p,
+-                           const OpQuantParam& quant_param,
+                            OpComputeType avgpool_type) {
+   uint32_t input_padding_top = narrow<uint32_t>(pool_attrs.pads[0]);
+   uint32_t input_padding_left = narrow<uint32_t>(pool_attrs.pads[1]);
+@@ -48,20 +47,6 @@ Status CreateXnnpackKernel(const PoolAttributes& pool_attrs,
+                                                    pooling_height, pooling_width,
+                                                    stride_height, stride_width,
+                                                    foutput_min, foutput_max, flags, &p);
+-  } else if (avgpool_type == OpComputeType::op_compute_type_qu8) {
+-    const float output_scale = quant_param[1].first[0];
+-    const uint8_t output_zero_point = quant_param[1].second;
+-    const uint8_t output_min = xnn_u8s8_quantize<uint8_t>(foutput_min, output_scale, output_zero_point);
+-    const uint8_t output_max = xnn_u8s8_quantize<uint8_t>(foutput_max, output_scale, output_zero_point);
+-    status = xnn_create_average_pooling2d_nhwc_qu8(input_padding_top, input_padding_right,
+-                                                   input_padding_bottom, input_padding_left,
+-                                                   pooling_height, pooling_width,
+-                                                   stride_height, stride_width,
+-                                                   quant_param[0].second,
+-                                                   quant_param[0].first[0],
+-                                                   quant_param[1].second,
+-                                                   quant_param[1].first[0],
+-                                                   output_min, output_max, flags, &p);
+   }
+ 
+   if (status != xnn_status_success) {
+@@ -72,9 +57,9 @@ Status CreateXnnpackKernel(const PoolAttributes& pool_attrs,
+ }
+ 
+ bool IsQuantAvgPoolSupported(const NodeUnit& node_unit, const GraphViewer& graph) {
+-  TensorQuantType x_input_type = GetTensorQuantType(node_unit, 0, false, graph);
+-  TensorQuantType output_type = GetTensorQuantType(node_unit, 0, true, graph);
+-  return (x_input_type == TensorTypeUint8 && output_type == TensorTypeUint8);
++  (void)node_unit;
++  (void)graph;
++  return false;
+ }
+ 
+ bool IsQuantizedAvgPool(QuantizedOpType quant_op_type) {
+@@ -209,14 +194,10 @@ AveragePool::AveragePool(const OpKernelInfo& info)
+     avgpool_type_ = OpComputeType::op_compute_type_fp32;
+   } else if (input_dtype == ONNX_NAMESPACE::TensorProto_DataType_FLOAT16) {
+     avgpool_type_ = OpComputeType::op_compute_type_fp16;
+-  } else if (input_dtype == ONNX_NAMESPACE::TensorProto_DataType_UINT8) {
+-    // the order of input tensor, x,x_scale, x_zp, y_scale, y_zp
+-    quant_param = ParseQuantParamForOp(info, input_dtype, 1);
+-    avgpool_type_ = OpComputeType::op_compute_type_qu8;
+   }
+   struct xnn_operator* p;
+   auto ret = CreateXnnpackKernel(pool_attrs_, clip_min_max_, p,
+-                                 quant_param, avgpool_type_);
++                                 avgpool_type_);
+   ORT_ENFORCE(ret.IsOK(), ret.ErrorMessage());
+   op0_.reset(p);
+ }
+@@ -242,23 +223,12 @@ Status AveragePool::Compute(OpKernelContext* context) const {
+ 
+   pthreadpool_t threadpool = GetThreadPool();
+ 
+-  // setup allocator/automated dellocate for workspace
+-  size_t workspace_size = 0;
+-  size_t workspace_alignment = 0;
+-  xnn_allocator* allocator = GetStoredAllocator().second;
+-  auto deallocator = [allocator](void* ptr) { allocator->aligned_deallocate(allocator->context, ptr); };
+-
+-  std::unique_ptr<void, decltype(deallocator)> workspace(nullptr, deallocator);
+-
+   auto reshape_fn = xnn_reshape_average_pooling2d_nhwc_f32;
+   if (avgpool_type_ == OpComputeType::op_compute_type_fp16) {
+     reshape_fn = xnn_reshape_average_pooling2d_nhwc_f16;
+-  } else if (avgpool_type_ == OpComputeType::op_compute_type_qu8) {
+-    reshape_fn = xnn_reshape_average_pooling2d_nhwc_qu8;
+   }
+ 
+   auto status = reshape_fn(op0_.get(), N, H, W, C, C, C,
+-                           &workspace_size, &workspace_alignment,
+                            /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+                            threadpool);
+ 
+@@ -267,17 +237,12 @@ Status AveragePool::Compute(OpKernelContext* context) const {
+                            " returned ", status);
+   }
+ 
+-  workspace.reset(allocator->aligned_allocate(allocator->context, XNN_ALLOCATION_ALIGNMENT, workspace_size));
+-
+   if (avgpool_type_ == OpComputeType::op_compute_type_fp32) {
+-    status = xnn_setup_average_pooling2d_nhwc_f32(op0_.get(), workspace.get(),
+-                                                  X.Data<float>(), Y.MutableData<float>());
++    status = xnn_setup_average_pooling2d_nhwc_f32(op0_.get(), X.Data<float>(),
++                                                  Y.MutableData<float>());
+   } else if (avgpool_type_ == OpComputeType::op_compute_type_fp16) {
+-    status = xnn_setup_average_pooling2d_nhwc_f16(op0_.get(), workspace.get(),
+-                                                  X.Data<MLFloat16>(), Y.MutableData<MLFloat16>());
+-  } else if (avgpool_type_ == OpComputeType::op_compute_type_qu8) {
+-    status = xnn_setup_average_pooling2d_nhwc_qu8(op0_.get(), workspace.get(),
+-                                                  X.Data<uint8_t>(), Y.MutableData<uint8_t>());
++    status = xnn_setup_average_pooling2d_nhwc_f16(op0_.get(), X.Data<MLFloat16>(),
++                                                  Y.MutableData<MLFloat16>());
+   }
+ 
+   if (status != xnn_status_success) {
+@@ -328,4 +293,4 @@ ONNX_OPERATOR_KERNEL_EX(
+     AveragePool);
+ 
+ }  // namespace xnnpack
+-}  // namespace onnxruntime
++}  // namespace onnxruntime
+\ No newline at end of file
+diff --git a/onnxruntime/core/providers/xnnpack/nn/conv.cc b/onnxruntime/core/providers/xnnpack/nn/conv.cc
+index 4e6b308e28..3ef0c1a7cf 100644
+--- a/onnxruntime/core/providers/xnnpack/nn/conv.cc
++++ b/onnxruntime/core/providers/xnnpack/nn/conv.cc
+@@ -91,7 +91,6 @@ Status Conv::Compute(OpKernelContext* context) const {
+ 
+   // setup allocator/automated dellocate for workspace
+   size_t workspace_size = 0;
+-  size_t workspace_alignment = 0;
+   xnn_allocator* allocator = GetStoredAllocator().second;
+   auto deallocator = [allocator](void* ptr) { allocator->aligned_deallocate(allocator->context, ptr); };
+   std::unique_ptr<void, decltype(deallocator)> workspace(nullptr, deallocator);
+@@ -108,7 +107,7 @@ Status Conv::Compute(OpKernelContext* context) const {
+   }
+ 
+   auto status = reshape_fn(op0_.get(), N, H, W,
+-                           &workspace_size, &workspace_alignment,
++                           &workspace_size,
+                            /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+                            threadpool);
+   if (status != xnn_status_success) {
+diff --git a/onnxruntime/core/providers/xnnpack/nn/conv_base.cc b/onnxruntime/core/providers/xnnpack/nn/conv_base.cc
+index 44962c1796..9742f39731 100644
+--- a/onnxruntime/core/providers/xnnpack/nn/conv_base.cc
++++ b/onnxruntime/core/providers/xnnpack/nn/conv_base.cc
+@@ -24,7 +24,6 @@ Status CreateXnnpackKernel(const ConvAttributes& conv_attrs,
+                            const std::optional<std::pair<float, float>>& clip_min_max,
+                            const Tensor& Weight, const Tensor* Bias,
+                            XnnpackOperator& op_uptr,
+-                           xnn_code_cache_t code_cache,
+                            xnn_weights_cache_t weights_cache,
+                            const OpQuantParam& quant_param,
+                            OpComputeType conv_type,
+@@ -79,7 +78,7 @@ Status CreateXnnpackKernel(const ConvAttributes& conv_attrs,
+         C, M,                                         // input channel stride, output channel stride
+         Weight.Data<float>(), B_data,
+         foutput_min, foutput_max, flags,
+-        code_cache, weights_cache,
++        weights_cache,
+         &p);
+   } else if (conv_type == OpComputeType::op_compute_type_fp16) {
+     const auto* B_data = Bias ? Bias->Data<MLFloat16>() : nullptr;
+@@ -97,7 +96,7 @@ Status CreateXnnpackKernel(const ConvAttributes& conv_attrs,
+         Weight.Data<MLFloat16>(), B_data,  // kernel, bias
+         foutput_min, foutput_max,
+         flags,
+-        code_cache, weights_cache,
++        weights_cache,
+         &p);
+   } else if (conv_type == OpComputeType::op_compute_type_qs8) {
+     const float output_scale = quant_param[2].first[0];
+@@ -121,7 +120,7 @@ Status CreateXnnpackKernel(const ConvAttributes& conv_attrs,
+         quant_param[2].second, quant_param[2].first[0],
+         output_min, output_max,
+         flags,
+-        code_cache, weights_cache,
++        weights_cache,
+         &p);
+   } else if (conv_type == OpComputeType::op_compute_type_qs8_per_channel) {
+     auto* B_data = Bias ? Bias->Data<int32_t>() : nullptr;
+@@ -145,7 +144,7 @@ Status CreateXnnpackKernel(const ConvAttributes& conv_attrs,
+         quant_param[2].second, quant_param[2].first[0],
+         output_min, output_max,
+         flags,
+-        code_cache, weights_cache,
++        weights_cache,
+         &p);
+   } else if (conv_type == OpComputeType::op_compute_type_qu8) {
+     const auto* B_data = Bias ? Bias->Data<int32_t>() : nullptr;
+@@ -170,7 +169,7 @@ Status CreateXnnpackKernel(const ConvAttributes& conv_attrs,
+         quant_param[2].second, quant_param[2].first[0],
+         output_min, output_max,
+         flags,
+-        code_cache, weights_cache,
++        weights_cache,
+         &p);
+   }
+ 
+@@ -521,7 +520,7 @@ ConvBase::ConvBase(const OpKernelInfo& info, bool is_transpose)
+ Status ConvBase::CreateKernel() {
+   auto ret = CreateXnnpackKernel(convbase_attrs_ref_, C_, M_, kernel_shape_, clip_min_max_, packed_w_,
+                                  B_, op0_,
+-                                 GetCodeCache(), GetWeightsCache(),
++                                 GetWeightsCache(),
+                                  quant_param_, conv_type_, is_transpose_);
+   return ret;
+ }
+diff --git a/onnxruntime/core/providers/xnnpack/tensor/resize.cc b/onnxruntime/core/providers/xnnpack/tensor/resize.cc
+index 82cf1fc9bb..ac40e53538 100644
+--- a/onnxruntime/core/providers/xnnpack/tensor/resize.cc
++++ b/onnxruntime/core/providers/xnnpack/tensor/resize.cc
+@@ -228,13 +228,13 @@ Resize::Resize(const OpKernelInfo& info) : UpsampleBase(info), XnnpackKernel{inf
+   auto out_h = output_dims_[1];
+   auto out_w = output_dims_[2];
+   if (op_type_ == OpComputeType::op_compute_type_fp32) {
+-    xstatus = xnn_create_resize_bilinear2d_nhwc_f32(out_h, out_w, flags, &p);
++    xstatus = xnn_create_resize_bilinear2d_nhwc(xnn_datatype_fp32, out_h, out_w, flags, &p);
+   } else if (op_type_ == OpComputeType::op_compute_type_fp16) {
+-    xstatus = xnn_create_resize_bilinear2d_nhwc_f16(out_h, out_w, flags, &p);
++    xstatus = xnn_create_resize_bilinear2d_nhwc(xnn_datatype_fp16, out_h, out_w, flags, &p);
+   } else if (op_type_ == OpComputeType::op_compute_type_qu8) {
+-    xstatus = xnn_create_resize_bilinear2d_nhwc_u8(out_h, out_w, flags, &p);
++    xstatus = xnn_create_resize_bilinear2d_nhwc(xnn_datatype_quint8, out_h, out_w, flags, &p);
+   } else {
+-    xstatus = xnn_create_resize_bilinear2d_nhwc_s8(out_h, out_w, flags, &p);
++    xstatus = xnn_create_resize_bilinear2d_nhwc(xnn_datatype_qint8, out_h, out_w, flags, &p);
+   }
+ 
+   ORT_ENFORCE(xstatus == xnn_status_success, "xnn_create_resize_bilinear2d_nhwc_", OpTypeToString(op_type_), " failed. Status:",
+@@ -262,17 +262,10 @@ Status Resize::ComputeInternal(OpKernelContext* ctx, const Tensor* input,
+   auto deallocator = [allocator](void* ptr) { allocator->aligned_deallocate(allocator->context, ptr); };
+   std::unique_ptr<void, decltype(deallocator)> workspace(nullptr, deallocator);
+ 
+-  auto reshape_fn = xnn_reshape_resize_bilinear2d_nhwc_f32;
+-  if (op_type_ == OpComputeType::op_compute_type_fp16) {
+-    reshape_fn = xnn_reshape_resize_bilinear2d_nhwc_f16;
+-  } else if (op_type_ == OpComputeType::op_compute_type_qu8) {
+-    reshape_fn = xnn_reshape_resize_bilinear2d_nhwc_u8;
+-  } else if (op_type_ == OpComputeType::op_compute_type_qs8) {
+-    reshape_fn = xnn_reshape_resize_bilinear2d_nhwc_s8;
+-  }
++  auto reshape_fn = xnn_reshape_resize_bilinear2d_nhwc;
+ 
+   auto status = reshape_fn(op0_.get(), N, H, W, C, C, C,
+-                           &workspace_size, &workspace_alignment, threadpool);
++                           &workspace_size, threadpool);
+   if (status != xnn_status_success) {
+     return ORT_MAKE_STATUS(ONNXRUNTIME, FAIL, "xnn_reshape_resize_bilinear2d_nhwc_", OpTypeToString(op_type_),
+                            " returned ", status);
+@@ -281,16 +274,16 @@ Status Resize::ComputeInternal(OpKernelContext* ctx, const Tensor* input,
+   workspace.reset(allocator->aligned_allocate(allocator->context, XNN_ALLOCATION_ALIGNMENT, workspace_size));
+ 
+   if (op_type_ == OpComputeType::op_compute_type_fp32) {
+-    status = xnn_setup_resize_bilinear2d_nhwc_f32(op0_.get(), workspace.get(), input->Data<float>(),
++    status = xnn_setup_resize_bilinear2d_nhwc(op0_.get(), workspace.get(), input->Data<float>(),
+                                                   output->MutableData<float>());
+   } else if (op_type_ == OpComputeType::op_compute_type_fp16) {
+-    status = xnn_setup_resize_bilinear2d_nhwc_f16(op0_.get(), workspace.get(), input->Data<MLFloat16>(),
++    status = xnn_setup_resize_bilinear2d_nhwc(op0_.get(), workspace.get(), input->Data<MLFloat16>(),
+                                                   output->MutableData<MLFloat16>());
+   } else if (op_type_ == OpComputeType::op_compute_type_qu8) {
+-    status = xnn_setup_resize_bilinear2d_nhwc_u8(op0_.get(), workspace.get(), input->Data<uint8_t>(),
++    status = xnn_setup_resize_bilinear2d_nhwc(op0_.get(), workspace.get(), input->Data<uint8_t>(),
+                                                  output->MutableData<uint8_t>());
+   } else {
+-    status = xnn_setup_resize_bilinear2d_nhwc_s8(op0_.get(), workspace.get(), input->Data<int8_t>(),
++    status = xnn_setup_resize_bilinear2d_nhwc(op0_.get(), workspace.get(), input->Data<int8_t>(),
+                                                  output->MutableData<int8_t>());
+   }
+ 
+diff --git a/onnxruntime/core/providers/xnnpack/xnnpack_kernel.h b/onnxruntime/core/providers/xnnpack/xnnpack_kernel.h
+index 31512586be..1779f51046 100644
+--- a/onnxruntime/core/providers/xnnpack/xnnpack_kernel.h
++++ b/onnxruntime/core/providers/xnnpack/xnnpack_kernel.h
+@@ -24,8 +24,6 @@ class XnnpackKernel : public OpKernel {
+   }
+ 
+   // see comment below about enabling code cache
+-  // xnn_code_cache_t GetCodeCache() { return caches_.auto_code_cache.get();}
+-  xnn_code_cache_t GetCodeCache() { return nullptr; }
+   xnn_weights_cache_t GetWeightsCache() { return caches_.auto_weights_cache.get(); }
+ 
+  private:
+@@ -42,11 +40,6 @@ class XnnpackKernel : public OpKernel {
+       if (enable) {
+ #ifdef XNN_CACHE_ENABLE
+         xnn_status status = xnn_status_success;
+-#if XNN_PLATFORM_JIT
+-        // status = xnn_init_code_cache(&code_cache_);
+-        // ORT_ENFORCE(status == xnn_status_success, "Failed to initialize XNNPACK code cache");)
+-        // auto_code_cache.reset(&code_cache_);
+-#endif
+         // status = xnn_init_weights_cache(&weights_cache_);
+         xnn_weights_cache_t weights_cache_provider = nullptr;
+         status = xnn_create_weights_cache(&weights_cache, 0);
+diff --git a/onnxruntime/core/session/inference_session.cc b/onnxruntime/core/session/inference_session.cc
+index e1802c8a82..882ab86b74 100644
+--- a/onnxruntime/core/session/inference_session.cc
++++ b/onnxruntime/core/session/inference_session.cc
+@@ -452,6 +452,8 @@ void InferenceSession::ConstructorCommon(const SessionOptions& session_options,
+         if (session_options_.config_options.TryGetConfigEntry(kOrtSessionOptionsConfigIntraOpThreadAffinities, to.affinity_str)) {
+           ORT_ENFORCE(!to.affinity_str.empty(), "Affinity string must not be empty");
+         }
++          LOGS(*session_logger_, INFO) << "Got past conditional.";
++
+         to.auto_set_affinity = to.thread_pool_size == 0 &&
+                                session_options_.execution_mode == ExecutionMode::ORT_SEQUENTIAL &&
+                                to.affinity_str.empty();
+@@ -462,6 +464,8 @@ void InferenceSession::ConstructorCommon(const SessionOptions& session_options,
+ 
+         thread_pool_ =
+             concurrency::CreateThreadPool(&Env::Default(), to, concurrency::ThreadPoolType::INTRA_OP);
++        LOGS(*session_logger_, INFO) << "Successfully created a threadpool.";
++
+       }
+     }
+     if (session_options_.execution_mode == ExecutionMode::ORT_PARALLEL) {

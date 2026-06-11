@@ -1,0 +1,29 @@
+{
+  "audio_path": "/home/linhu/projects/speech_ai_exp/project/data/demo_inputs/08_name_us_m.wav",
+  "audio_duration_s": 2.879637188208617,
+  "asr_s": 4.4164924249053,
+  "asr_rtf": 1.5336975237678256,
+  "llm_ttft_s": 0.4059236631728709,
+  "llm_generation_s": 0.7607531892135739,
+  "llm_chars": 40,
+  "llm_tokens_per_s_est": 13.14486766770898,
+  "tts_s": 0.02550624404102564,
+  "transcript": "My name is Alex. Please remember that.",
+  "reply_text": "Sure, Alex. I'll keep your name in mind.",
+  "output_wav_path": "/home/linhu/projects/speech_ai_exp/project/audio/out/demo_inputs/08_name_us_m_reply.wav",
+  "meta": {
+    "asr": {
+      "asr_language": "en",
+      "asr_probability": 0.9572372436523438,
+      "sample_rate": 22050,
+      "audio_duration_s": 2.879637188208617
+    },
+    "llm": {
+      "backend": "hf"
+    },
+    "tts": {
+      "tts_engine": "espeak-ng",
+      "tts_voice": "en-us"
+    }
+  }
+}

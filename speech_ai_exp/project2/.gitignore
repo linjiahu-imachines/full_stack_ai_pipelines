@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+audio/out/*.wav
+profiles/*.json
+demo/latest/*.wav
+demo/latest/index.html

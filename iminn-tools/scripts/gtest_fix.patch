@@ -1,0 +1,13 @@
+diff --git a/googletest/include/gtest/internal/gtest-port.h b/googletest/include/gtest/internal/gtest-port.h
+index 4cfc16c0..925c7d7c 100644
+--- a/googletest/include/gtest/internal/gtest-port.h
++++ b/googletest/include/gtest/internal/gtest-port.h
+@@ -282,7 +282,7 @@
+ 
+ // Detect C++ feature test macros as gracefully as possible.
+ // MSVC >= 19.15, Clang >= 3.4.1, and GCC >= 4.1.2 support feature test macros.
+-#if GTEST_INTERNAL_CPLUSPLUS_LANG >= 202002L && \
++#if GTEST_INTERNAL_CPLUSPLUS_LANG >= 201703L && \
+     (!defined(__has_include) || GTEST_INTERNAL_HAS_INCLUDE(<version>))
+ #include <version>  // C++20 and later
+ #elif (!defined(__has_include) || GTEST_INTERNAL_HAS_INCLUDE(<ciso646>))

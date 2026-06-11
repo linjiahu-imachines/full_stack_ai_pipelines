@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Intellengent Machines Agentic Assitant</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <img src="/assets/imachines-logo.png" alt="I Machines" class="logo" />
+    <div>
+      <h1>Intellengent Machines Agentic Assitant</h1>
+      <p id="status-label">Connecting…</p>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="actions">
+      <button type="button" id="btn-new-session" class="action-card">New conversation</button>
+      <button type="button" id="btn-history" class="action-card">Conversation history</button>
+    </section>
+
+    <p id="context-banner" class="context-banner hidden"></p>
+    <p class="session-meta">
+      <span id="session-label">No active session</span>
+      <span id="turn-count-label"></span>
+    </p>
+
+    <div id="chat-log" class="chat-log">
+      <p class="empty-hint">Start a <strong>New conversation</strong>, then record below.</p>
+    </div>
+
+    <div id="busy" class="busy hidden">Processing turn…</div>
+
+    <section class="controls">
+      <button type="button" id="btn-record" class="btn primary">Record</button>
+      <button type="button" id="btn-stop" class="btn" disabled>Stop &amp; send</button>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <img src="/assets/imachines-logo.png" alt="" class="logo small" />
+    <span>Local voice AI · Project 1 staged pipeline</span>
+  </footer>
+
+  <div id="history-overlay" class="overlay hidden">
+    <div class="modal">
+      <header>
+        <h2>Conversation history</h2>
+        <button type="button" id="btn-close-history" aria-label="Close">×</button>
+      </header>
+      <div class="tabs">
+        <button type="button" class="tab active" data-tab="current">This session</button>
+        <button type="button" class="tab" data-tab="all">All sessions</button>
+      </div>
+      <div id="history-current" class="history-panel"></div>
+      <div id="history-all" class="history-panel hidden"></div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

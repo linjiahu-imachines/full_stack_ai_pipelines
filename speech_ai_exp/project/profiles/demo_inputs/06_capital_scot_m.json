@@ -1,0 +1,29 @@
+{
+  "audio_path": "/home/linhu/projects/speech_ai_exp/project/data/demo_inputs/06_capital_scot_m.wav",
+  "audio_duration_s": 2.03718820861678,
+  "asr_s": 4.147084000054747,
+  "asr_rtf": 2.0356901647641847,
+  "llm_ttft_s": 0.4644311279989779,
+  "llm_generation_s": 0.671729716937989,
+  "llm_chars": 31,
+  "llm_tokens_per_s_est": 11.537378508915133,
+  "tts_s": 0.020462200045585632,
+  "transcript": "What is the capital of France?",
+  "reply_text": "The capital of France is Paris.",
+  "output_wav_path": "/home/linhu/projects/speech_ai_exp/project/audio/out/demo_inputs/06_capital_scot_m_reply.wav",
+  "meta": {
+    "asr": {
+      "asr_language": "en",
+      "asr_probability": 0.9610852003097534,
+      "sample_rate": 22050,
+      "audio_duration_s": 2.03718820861678
+    },
+    "llm": {
+      "backend": "hf"
+    },
+    "tts": {
+      "tts_engine": "espeak-ng",
+      "tts_voice": "en-us"
+    }
+  }
+}

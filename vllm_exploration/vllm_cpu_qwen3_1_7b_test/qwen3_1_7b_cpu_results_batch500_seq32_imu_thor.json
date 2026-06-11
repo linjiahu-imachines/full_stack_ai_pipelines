@@ -1,0 +1,52 @@
+{
+  "meta": {
+    "started_at_utc": "2026-04-08T20:46:30.847300+00:00",
+    "model": "Qwen/Qwen3-1.7B",
+    "batch_size": 500,
+    "max_new_tokens": 30,
+    "max_num_seqs_requested": 32,
+    "max_num_seqs_effective": 32,
+    "experiment": "vLLM CPU only (batch 500, max_num_seqs sweep)",
+    "system_info": {
+      "platform": {
+        "system": "Linux",
+        "release": "6.8.12-tegra",
+        "machine": "aarch64",
+        "python": "3.12.3"
+      },
+      "cpu": {
+        "vendor": "ARM",
+        "model_name": "-",
+        "architecture": "aarch64",
+        "sockets": "-",
+        "cores_per_socket": null,
+        "threads_per_core": "1",
+        "logical_cpus": "14",
+        "physical_cores": "14",
+        "max_mhz": "2601.0000",
+        "min_mhz": "54.0000"
+      },
+      "cache": {
+        "l1d": "896 KiB (14 instances)",
+        "l1i": "896 KiB (14 instances)",
+        "l2": "14 MiB (14 instances)",
+        "l3": null
+      },
+      "memory": {
+        "total_gb": 122.82,
+        "available_gb": 77.03
+      }
+    }
+  },
+  "qwen3-1.7B with vLLM": {
+    "engine": "qwen3-1.7B with vLLM",
+    "model": "Qwen/Qwen3-1.7B",
+    "batch_size": 500,
+    "max_new_tokens": 30,
+    "max_num_seqs": 32,
+    "init_time_s": 11.79,
+    "time_s": 163.65,
+    "per_prompt_ms": 327.3,
+    "throughput_prompts_per_s": 3.06
+  }
+}

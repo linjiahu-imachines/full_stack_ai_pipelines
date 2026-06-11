@@ -1,0 +1,20 @@
+# Example preset — paste values or load with run_turn.py --config (optional)
+
+asr:
+  backend: faster_whisper
+  model_size: small
+  device: auto          # cuda | cpu | auto
+  compute_type: auto    # int8_float16 etc. passed through when CUDA
+
+llm:
+  backend: ollama
+  ollama_host: http://127.0.0.1:11434
+  ollama_model: llama3.2
+  system_prompt: "You are a concise voice assistant. Answer in one or two short sentences unless asked for detail."
+  max_tokens: 256
+  temperature: 0.3
+
+tts:
+  backend: espeak
+  voice: en-us
+  rate_wpm: 175

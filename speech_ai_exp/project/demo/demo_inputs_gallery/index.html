@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Demo inputs — staged pipeline outputs</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 64rem; margin: 2rem auto; padding: 0 1rem; }
+    h1 { font-size: 1.4rem; }
+    .intro { color: #444; margin-bottom: 2rem; }
+    .card { border: 1px solid #ddd; border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
+    .card h2 { margin: 0 0 0.35rem; font-size: 1.1rem; }
+    .meta { color: #666; font-size: 0.9rem; margin: 0 0 0.5rem; }
+    .expected { font-size: 0.85rem; color: #555; }
+    .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+    @media (max-width: 640px) { .cols { grid-template-columns: 1fr; } }
+    .text { background: #f4f4f5; padding: 0.6rem; border-radius: 6px; min-height: 2.5rem; }
+    audio { width: 100%; margin-top: 0.4rem; }
+    table { font-size: 0.85rem; border-collapse: collapse; }
+    td, th { padding: 0.25rem 0.6rem; border-bottom: 1px solid #eee; }
+  </style>
+</head>
+<body>
+  <h1>Project 1 — Demo inputs verification</h1>
+  <p class="intro">Each card: play <strong>user input</strong> (left) and <strong>assistant reply</strong> (right).
+  Profiles from <code>profiles/demo_inputs/</code>.</p>
+  
+  <article class="card" id="01_math_us_m">
+    <h2>01_math_us_m</h2>
+    <p class="meta">Baseline math question (US male). Reply should mention five.</p>
+    <p class="expected"><strong>Source phrase:</strong> What is two plus three?</p>
+    <div class="cols">
+      <div>
+        <h3>User input</h3>
+        <p class="text">What in 2 plus 3?</p>
+        <audio controls src="01_math_us_m_in.wav"></audio>
+      </div>
+      <div>
+        <h3>Assistant reply</h3>
+        <p class="text">In mathematics, the sum of 2 and 3 is 5.</p>
+        <audio controls src="01_math_us_m_reply.wav"></audio>
+      </div>
+    </div>
+    <table>
+      <tr><th>ASR</th><td>4.295s</td></tr>
+      <tr><th>LLM</th><td>0.878s</td></tr>
+      <tr><th>TTS</th><td>0.024s</td></tr>
+      <tr><th>Sum</th><td>5.197s</td></tr>
+    </table>
+  </article>
+  <article class="card" id="02_math_gb_f">
+    <h2>02_math_gb_f</h2>
+    <p class="meta">British voice, subtraction. Reply should mention six.</p>
+    <p class="expected"><strong>Source phrase:</strong> What is ten minus four?</p>
+    <div class="cols">
+      <div>
+        <h3>User input</h3>
+        <p class="text">What is 10 minus 4?</p>
+        <audio controls src="02_math_gb_f_in.wav"></audio>
+      </div>
+      <div>
+        <h3>Assistant reply</h3>
+        <p class="text">10 minus 4 equals 6.</p>
+        <audio controls src="02_math_gb_f_reply.wav"></audio>
+      </div>
+    </div>
+    <table>
+      <tr><th>ASR</th><td>4.412s</td></tr>
+      <tr><th>LLM</th><td>0.673s</td></tr>
+      <tr><th>TTS</th><td>0.025s</td></tr>
+      <tr><th>Sum</th><td>5.110s</td></tr>
+    </table>
+  </article>
+  <article class="card" id="03_weather_us_f">
+    <h2>03_weather_us_f</h2>
+    <p class="meta">US female voice, open-ended question.</p>
+    <p class="expected"><strong>Source phrase:</strong> What is the weather like today?</p>
+    <div class="cols">
+      <div>
+        <h3>User input</h3>
+        <p class="text">What is the weather like today?</p>
+        <audio controls src="03_weather_us_f_in.wav"></audio>
+      </div>
+      <div>
+        <h3>Assistant reply</h3>
+        <p class="text">I'm sorry, I don't have real-time information on current weather conditions. You can check local weather updates through your preferred news source or weather app.</p>
+        <audio controls src="03_weather_us_f_reply.wav"></audio>
+      </div>
+    </div>
+    <table>
+      <tr><th>ASR</th><td>4.293s</td></tr>
+      <tr><th>LLM</th><td>1.359s</td></tr>
+      <tr><th>TTS</th><td>0.023s</td></tr>
+      <tr><th>Sum</th><td>5.675s</td></tr>
+    </table>
+  </article>
+  <article class="card" id="04_greeting_us_fast">
+    <h2>04_greeting_us_fast</h2>
+    <p class="meta">Faster speech rate.</p>
+    <p class="expected"><strong>Source phrase:</strong> Hello, can you help me with something?</p>
+    <div class="cols">
+      <div>
+        <h3>User input</h3>
+        <p class="text">Hello, can you help me with something?</p>
+        <audio controls src="04_greeting_us_fast_in.wav"></audio>
+      </div>
+      <div>
+        <h3>Assistant reply</h3>
+        <p class="text">Of course! What would you like assistance with today?</p>
+        <audio controls src="04_greeting_us_fast_reply.wav"></audio>
+      </div>
+    </div>
+    <table>
+      <tr><th>ASR</th><td>4.421s</td></tr>
+      <tr><th>LLM</th><td>0.735s</td></tr>
+      <tr><th>TTS</th><td>0.023s</td></tr>
+      <tr><th>Sum</th><td>5.179s</td></tr>
+    </table>
+  </article>
+  <article class="card" id="05_time_us_slow">
+    <h2>05_time_us_slow</h2>
+    <p class="meta">Slower speech rate.</p>
+    <p class="expected"><strong>Source phrase:</strong> What time is it right now?</p>
+    <div class="cols">
+      <div>
+        <h3>User input</h3>
+        <p class="text">What time is it right now?</p>
+        <audio controls src="05_time_us_slow_in.wav"></audio>
+      </div>
+      <div>
+        <h3>Assistant reply</h3>
+        <p class="text">I'm sorry, I don't have the ability to provide real-time information about current times as my responses are based on historical data and not live updates.</p>
+        <audio controls src="05_time_us_slow_reply.wav"></audio>
+      </div>
+    </div>
+    <table>
+      <tr><th>ASR</th><td>4.205s</td></tr>
+      <tr><th>LLM</th><td>1.307s</td></tr>
+      <tr><th>TTS</th><td>0.027s</td></tr>
+      <tr><th>Sum</th><td>5.539s</td></tr>
+    </table>
+  </article>
+  <article class="card" id="06_capital_scot_m">
+    <h2>06_capital_scot_m</h2>
+    <p class="meta">Scottish English accent. Reply should mention Paris.</p>
+    <p class="expected"><strong>Source phrase:</strong> What is the capital of France?</p>
+    <div class="cols">
+      <div>
+        <h3>User input</h3>
+        <p class="text">What is the capital of France?</p>
+        <audio controls src="06_capital_scot_m_in.wav"></audio>
+      </div>
+      <div>
+        <h3>Assistant reply</h3>
+        <p class="text">The capital of France is Paris.</p>
+        <audio controls src="06_capital_scot_m_reply.wav"></audio>
+      </div>
+    </div>
+    <table>
+      <tr><th>ASR</th><td>4.147s</td></tr>
+      <tr><th>LLM</th><td>0.672s</td></tr>
+      <tr><th>TTS</th><td>0.020s</td></tr>
+      <tr><th>Sum</th><td>4.839s</td></tr>
+    </table>
+  </article>
+  <article class="card" id="07_recipe_us_m">
+    <h2>07_recipe_us_m</h2>
+    <p class="meta">Longer how-to question.</p>
+    <p class="expected"><strong>Source phrase:</strong> How do I boil an egg?</p>
+    <div class="cols">
+      <div>
+        <h3>User input</h3>
+        <p class="text">How do I boil a egg?</p>
+        <audio controls src="07_recipe_us_m_in.wav"></audio>
+      </div>
+      <div>
+        <h3>Assistant reply</h3>
+        <p class="text">To boil an egg, place it in a pot of boiling water and cook until the desired doneness.</p>
+        <audio controls src="07_recipe_us_m_reply.wav"></audio>
+      </div>
+    </div>
+    <table>
+      <tr><th>ASR</th><td>4.207s</td></tr>
+      <tr><th>LLM</th><td>0.991s</td></tr>
+      <tr><th>TTS</th><td>0.025s</td></tr>
+      <tr><th>Sum</th><td>5.223s</td></tr>
+    </table>
+  </article>
+  <article class="card" id="08_name_us_m">
+    <h2>08_name_us_m</h2>
+    <p class="meta">Short statement / memory-style utterance.</p>
+    <p class="expected"><strong>Source phrase:</strong> My name is Alex. Please remember that.</p>
+    <div class="cols">
+      <div>
+        <h3>User input</h3>
+        <p class="text">My name is Alex. Please remember that.</p>
+        <audio controls src="08_name_us_m_in.wav"></audio>
+      </div>
+      <div>
+        <h3>Assistant reply</h3>
+        <p class="text">Sure, Alex. I'll keep your name in mind.</p>
+        <audio controls src="08_name_us_m_reply.wav"></audio>
+      </div>
+    </div>
+    <table>
+      <tr><th>ASR</th><td>4.416s</td></tr>
+      <tr><th>LLM</th><td>0.761s</td></tr>
+      <tr><th>TTS</th><td>0.026s</td></tr>
+      <tr><th>Sum</th><td>5.203s</td></tr>
+    </table>
+  </article>
+</body>
+</html>

@@ -1,0 +1,29 @@
+{
+  "audio_path": "/home/linhu/projects/speech_ai_exp/project/data/demo_inputs/07_recipe_us_m.wav",
+  "audio_duration_s": 1.52281179138322,
+  "asr_s": 4.207457134965807,
+  "asr_rtf": 2.762952821073204,
+  "llm_ttft_s": 0.406635832041502,
+  "llm_generation_s": 0.9909926722757518,
+  "llm_chars": 87,
+  "llm_tokens_per_s_est": 21.947690036953052,
+  "tts_s": 0.024971439968794584,
+  "transcript": "How do I boil a egg?",
+  "reply_text": "To boil an egg, place it in a pot of boiling water and cook until the desired doneness.",
+  "output_wav_path": "/home/linhu/projects/speech_ai_exp/project/audio/out/demo_inputs/07_recipe_us_m_reply.wav",
+  "meta": {
+    "asr": {
+      "asr_language": "en",
+      "asr_probability": 0.958306074142456,
+      "sample_rate": 22050,
+      "audio_duration_s": 1.52281179138322
+    },
+    "llm": {
+      "backend": "hf"
+    },
+    "tts": {
+      "tts_engine": "espeak-ng",
+      "tts_voice": "en-us"
+    }
+  }
+}

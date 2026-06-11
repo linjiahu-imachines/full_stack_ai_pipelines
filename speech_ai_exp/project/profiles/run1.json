@@ -1,0 +1,29 @@
+{
+  "audio_path": "/home/linhu/projects/speech_ai_exp/project/data/sample_in/test_voice.wav",
+  "audio_duration_s": 1.493922902494331,
+  "asr_s": 4.314965293044224,
+  "asr_rtf": 2.888345366310226,
+  "llm_ttft_s": 0.43378404807299376,
+  "llm_generation_s": 0.9873906879220158,
+  "llm_chars": 65,
+  "llm_tokens_per_s_est": 16.457517980241906,
+  "tts_s": 0.027171174064278603,
+  "transcript": "What in 2 plus 3?",
+  "reply_text": "In the expression \"2 + 3,\" you add the numbers together to get 5.",
+  "output_wav_path": "/home/linhu/projects/speech_ai_exp/project/audio/out/test_voice_reply.wav",
+  "meta": {
+    "asr": {
+      "asr_language": "en",
+      "asr_probability": 0.9327204823493958,
+      "sample_rate": 22050,
+      "audio_duration_s": 1.493922902494331
+    },
+    "llm": {
+      "backend": "hf"
+    },
+    "tts": {
+      "tts_engine": "espeak-ng",
+      "tts_voice": "en-us"
+    }
+  }
+}

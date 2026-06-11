@@ -1,0 +1,19 @@
+# Chatbot + demo preset — Kokoro-82M neural TTS.
+asr:
+  model_size: small
+  device: cpu
+  compute_type: int8
+
+llm:
+  backend: hf
+  hf_model: Qwen/Qwen2.5-1.5B-Instruct
+  hf_device: auto
+  hf_max_new_tokens: 128
+  temperature: 0.3
+  system_prompt: "You are a concise voice assistant in a multi-turn conversation. Use earlier turns in the chat when relevant. Answer in one or two short sentences suitable for text-to-speech."
+
+tts:
+  backend: kokoro
+  kokoro_lang_code: a
+  kokoro_voice: af_heart
+  kokoro_speed: 1.0
