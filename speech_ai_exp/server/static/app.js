@@ -12,6 +12,55 @@ const sessionLabel = document.getElementById("session-label");
 const turnCountLabel = document.getElementById("turn-count-label");
 const statusLabel = document.getElementById("status-label");
 const busyEl = document.getElementById("busy");
+const micBanner = document.getElementById("mic-banner");
+const fileUpload = document.getElementById("file-upload");
+const llmModelSelect = document.getElementById("llm-model-select");
+
+const LLM_MODEL_STORAGE_KEY = "chat_llm_model_id";
+let llmModels = [];
+
+function isSecureMicContext() {
+  if (window.isSecureContext) return true;
+  const h = location.hostname;
+  return h === "localhost" || h === "127.0.0.1" || h === "[::1]";
+}
+
+function micUnavailableMessage() {
+  return (
+    "Microphone is blocked: browsers only allow the mic on HTTPS or http://127.0.0.1 (not http://172.16.x.x). " +
+    "Fix: on your PC run SSH tunnel, then open http://127.0.0.1:8000/ — " +
+    "ssh -L 8000:127.0.0.1:8000 linhu@172.16.1.103 — " +
+    "Or use Upload WAV below."
+  );
+}
+
+async function getMicStream() {
+  if (navigator.mediaDevices?.getUserMedia) {
+    return navigator.mediaDevices.getUserMedia({ audio: true });
+  }
+  const legacy = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+  if (legacy) {
+    return new Promise((resolve, reject) => {
+      legacy.call(navigator, { audio: true }, resolve, reject);
+    });
+  }
+  throw new Error(micUnavailableMessage());
+}
+
+function updateMicBanner() {
+  if (!micBanner) return;
+  if (isSecureMicContext() && navigator.mediaDevices?.getUserMedia) {
+    micBanner.classList.add("hidden");
+    micBanner.textContent = "";
+    return;
+  }
+  micBanner.classList.remove("hidden");
+  micBanner.innerHTML =
+    "<strong>Microphone unavailable at this URL.</strong> " +
+    "Use <code>http://127.0.0.1:8000/</code> via SSH tunnel " +
+    "(<code>ssh -L 8000:127.0.0.1:8000 linhu@172.16.1.103</code>) " +
+    "or <strong>Upload WAV</strong> to test without the mic.";
+}
 
 let sessionId = localStorage.getItem("chat_session_id") || null;
 let mediaRecorder = null;
@@ -22,9 +71,53 @@ async function checkHealth() {
     const r = await fetch("/health");
     const j = await r.json();
     statusLabel.textContent = j.pipeline_ready ? "Pipeline ready" : "Loading models…";
+    if (j.pipeline_ready && Array.isArray(j.llm_models) && j.llm_models.length && !llmModels.length) {
+      llmModels = j.llm_models;
+      populateLlmModelSelect(j.llm_default);
+    }
   } catch {
     statusLabel.textContent = "Offline";
   }
+}
+
+async function loadLlmModels() {
+  try {
+    const r = await fetch("/api/llm-models");
+    if (!r.ok) return;
+    llmModels = await r.json();
+    const defaultId = llmModels.find((m) => m.is_default)?.id || llmModels[0]?.id;
+    populateLlmModelSelect(defaultId);
+  } catch (e) {
+    console.warn("Failed to load LLM models:", e);
+  }
+}
+
+function populateLlmModelSelect(defaultId) {
+  if (!llmModelSelect || !llmModels.length) return;
+  const saved = localStorage.getItem(LLM_MODEL_STORAGE_KEY);
+  const selected = saved && llmModels.some((m) => m.id === saved) ? saved : defaultId;
+  llmModelSelect.innerHTML = "";
+  for (const m of llmModels) {
+    const opt = document.createElement("option");
+    opt.value = m.id;
+    opt.textContent = m.label;
+    if (m.id === selected) opt.selected = true;
+    llmModelSelect.appendChild(opt);
+  }
+  if (selected) localStorage.setItem(LLM_MODEL_STORAGE_KEY, selected);
+}
+
+function selectedLlmModelId() {
+  if (!llmModelSelect) return "";
+  const id = llmModelSelect.value;
+  if (id) localStorage.setItem(LLM_MODEL_STORAGE_KEY, id);
+  return id;
+}
+
+if (llmModelSelect) {
+  llmModelSelect.addEventListener("change", () => {
+    selectedLlmModelId();
+  });
 }
 
 function escapeHtml(s) {
@@ -69,11 +162,14 @@ function renderTurn(turn, sid) {
   const asstMsg = document.createElement("div");
   asstMsg.className = "msg assistant";
   const meta = formatTiming(turn.timings);
+  const llmNote = turn.agent?.llm_model_label
+    ? `Model: ${turn.agent.llm_model_label}`
+    : "";
   asstMsg.innerHTML = `
     <div class="role">Assistant</div>
     <div class="text">${escapeHtml(turn.assistant_reply || "")}</div>
     <audio controls src="/api/sessions/${sid}/audio/${encodeURIComponent(turn.reply_audio)}"></audio>
-    ${meta ? `<div class="meta">${escapeHtml(meta)}</div>` : ""}
+    ${meta || llmNote ? `<div class="meta">${escapeHtml([llmNote, meta].filter(Boolean).join(" · "))}</div>` : ""}
   `;
   group.appendChild(document.createElement("div")).className = "turn-header";
   group.querySelector(".turn-header").textContent = `Turn ${turn.turn_index}`;
@@ -237,6 +333,8 @@ async function sendTurn(blob) {
   btnStop.disabled = true;
   const form = new FormData();
   form.append("audio", blob, "utterance.webm");
+  const modelId = selectedLlmModelId();
+  if (modelId) form.append("llm_model", modelId);
   try {
     const r = await fetch(`/api/sessions/${sessionId}/turn`, { method: "POST", body: form });
     if (!r.ok) throw new Error(await r.text() || r.statusText);
@@ -246,7 +344,10 @@ async function sendTurn(blob) {
     const el = groups[groups.length - 1]?.querySelector(".msg.assistant audio");
     if (el) el.play().catch(() => playReplyAudio(j.reply_audio_url));
     else playReplyAudio(j.reply_audio_url);
-    if (j.context_messages > 0) {
+    if (j.llm_model_label) {
+      contextBanner.textContent = `Last reply used ${j.llm_model_label}.`;
+      contextBanner.classList.remove("hidden");
+    } else if (j.context_messages > 0) {
       contextBanner.textContent = `Last reply used ${j.context_messages} prior message(s).`;
       contextBanner.classList.remove("hidden");
     }
@@ -267,7 +368,7 @@ btnRecord.addEventListener("click", async () => {
   if (mediaRecorder?.state === "recording") return;
   if (!sessionId) await createSession(true);
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const stream = await getMicStream();
     chunks = [];
     mediaRecorder = new MediaRecorder(stream);
     mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
@@ -279,6 +380,15 @@ btnRecord.addEventListener("click", async () => {
     alert("Microphone error: " + e.message);
   }
 });
+
+if (fileUpload) {
+  fileUpload.addEventListener("change", async () => {
+    const file = fileUpload.files?.[0];
+    fileUpload.value = "";
+    if (!file) return;
+    await sendTurn(file);
+  });
+}
 
 btnStop.addEventListener("click", async () => {
   if (!mediaRecorder || mediaRecorder.state !== "recording") return;
@@ -292,6 +402,8 @@ btnStop.addEventListener("click", async () => {
 });
 
 (async () => {
+  updateMicBanner();
   await checkHealth();
+  await loadLlmModels();
   await loadSession();
 })();

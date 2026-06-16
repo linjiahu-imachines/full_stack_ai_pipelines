@@ -17,9 +17,12 @@ class RunConfig:
     whisper_language: str | None = None  # ISO code or None for auto
 
     # LLM
-    llm_backend: str = "ollama"  # ollama | hf
+    llm_backend: str = "ollama"  # ollama | hf | remote
     ollama_host: str = "http://127.0.0.1:11434"
     ollama_model: str = "llama3.2"
+    remote_base_url: str = "http://127.0.0.1:8080"
+    remote_model: str = "local-model"
+    remote_api_key: str = ""
     system_prompt: str = (
         "You are a helpful voice assistant. Keep answers concise for spoken delivery."
     )
@@ -59,6 +62,9 @@ def overlay_from_yaml_dict(cfg: RunConfig, data: dict[str, Any]) -> None:
         cfg.llm_backend = l.get("backend", cfg.llm_backend)
         cfg.ollama_host = l.get("ollama_host", cfg.ollama_host)
         cfg.ollama_model = l.get("ollama_model", cfg.ollama_model)
+        cfg.remote_base_url = l.get("remote_base_url", cfg.remote_base_url)
+        cfg.remote_model = l.get("remote_model", cfg.remote_model)
+        cfg.remote_api_key = l.get("remote_api_key", cfg.remote_api_key)
         cfg.system_prompt = l.get("system_prompt", cfg.system_prompt)
         cfg.max_tokens = int(l.get("max_tokens", cfg.max_tokens))
         cfg.temperature = float(l.get("temperature", cfg.temperature))

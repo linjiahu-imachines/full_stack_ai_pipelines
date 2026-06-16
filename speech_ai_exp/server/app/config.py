@@ -9,7 +9,7 @@ from pathlib import Path
 class ServerConfig:
     host: str = "0.0.0.0"
     port: int = 8000
-    staged_config: Path = Path("../project/configs/demo_staged_kokoro.yaml")
+    staged_config: Path = Path("../project/configs/demo_staged_kokoro_agent.yaml")
     sessions_dir: Path = Path("data/sessions")
     static_dir: Path = Path("static")
 
@@ -22,7 +22,7 @@ class ServerConfig:
             staged_config=Path(
                 os.environ.get(
                     "STAGED_CONFIG",
-                    str(root / ".." / "project" / "configs" / "demo_staged_kokoro.yaml"),
+                    str(root / ".." / "project" / "configs" / "demo_staged_kokoro_agent_dual.yaml"),
                 )
             ),
             sessions_dir=Path(os.environ.get("SESSIONS_DIR", str(root / "data" / "sessions"))),

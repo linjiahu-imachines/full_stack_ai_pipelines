@@ -55,6 +55,31 @@ body {
 .hidden { display: none !important; }
 .session-meta { font-size: 0.85rem; color: var(--muted); }
 
+.model-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.75rem 0 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.model-picker label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.model-picker select {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  background: #fff;
+}
+
 .chat-log {
   background: var(--card);
   border: 1px solid var(--border);
@@ -74,7 +99,19 @@ body {
 .msg audio { width: 100%; margin-top: 0.5rem; }
 .meta { font-size: 0.75rem; color: var(--muted); margin-top: 0.35rem; }
 
-.controls { display: flex; gap: 0.75rem; }
+.controls { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+.upload-label { cursor: pointer; text-align: center; display: inline-flex; align-items: center; justify-content: center; }
+
+.mic-banner {
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.45;
+}
+.mic-banner code { font-size: 0.85rem; }
 .btn {
   flex: 1;
   padding: 0.85rem 1rem;

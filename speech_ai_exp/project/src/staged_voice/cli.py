@@ -20,7 +20,8 @@ def _load_yaml(path: Path) -> dict:
 
 
 def main(argv: list[str] | None = None) -> int:
-    from staged_voice.backends import FasterWhisperASR, OllamaLLM
+    from staged_voice.backends import FasterWhisperASR
+    from staged_voice.backends.llm_factory import make_llm
     from staged_voice.backends.tts_factory import make_tts
     from staged_voice.config import RunConfig, overlay_from_yaml_dict
     from staged_voice.pipeline import StagedVoicePipeline
@@ -136,18 +137,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Audio not found: {audio_path}", file=sys.stderr)
         return 2
 
-    if cfg.llm_backend == "ollama":
-        llm = OllamaLLM(cfg.ollama_host, cfg.ollama_model)
-    elif cfg.llm_backend == "hf":
-        from staged_voice.backends.llm_hf_causal import HFCausalLM
-
-        llm = HFCausalLM(
-            cfg.hf_model_name,
-            device=cfg.hf_device,
-            torch_dtype=cfg.hf_torch_dtype,
-        )
-    else:
-        print(f"Unknown llm backend: {cfg.llm_backend}", file=sys.stderr)
+    try:
+        llm = make_llm(cfg)
+    except ValueError as e:
+        print(str(e), file=sys.stderr)
         return 2
 
     try:

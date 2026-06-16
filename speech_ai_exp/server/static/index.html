@@ -21,11 +21,17 @@
       <button type="button" id="btn-history" class="action-card">Conversation history</button>
     </section>
 
+    <p id="mic-banner" class="mic-banner hidden"></p>
     <p id="context-banner" class="context-banner hidden"></p>
     <p class="session-meta">
       <span id="session-label">No active session</span>
       <span id="turn-count-label"></span>
     </p>
+
+    <section class="model-picker">
+      <label for="llm-model-select">LLM model</label>
+      <select id="llm-model-select" aria-label="Select LLM model"></select>
+    </section>
 
     <div id="chat-log" class="chat-log">
       <p class="empty-hint">Start a <strong>New conversation</strong>, then record below.</p>
@@ -36,6 +42,10 @@
     <section class="controls">
       <button type="button" id="btn-record" class="btn primary">Record</button>
       <button type="button" id="btn-stop" class="btn" disabled>Stop &amp; send</button>
+      <label class="btn upload-label">
+        Upload WAV
+        <input type="file" id="file-upload" accept="audio/*,.wav,.webm,.ogg,.mp3,.m4a" hidden />
+      </label>
     </section>
   </main>
 

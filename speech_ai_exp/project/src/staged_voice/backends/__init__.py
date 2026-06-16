@@ -5,10 +5,12 @@
 
 from staged_voice.backends.asr_faster_whisper import FasterWhisperASR
 from staged_voice.backends.llm_ollama import OllamaLLM
+from staged_voice.backends.llm_remote_chat import RemoteChatLLM
 from staged_voice.backends.tts_espeak import EspeakNgTTS
 
 __all__ = [
     "EspeakNgTTS",
     "FasterWhisperASR",
     "OllamaLLM",
+    "RemoteChatLLM",
 ]

@@ -1,0 +1,42 @@
+# Dual LLM preset — runtime UI selection between local HF and remote API.
+# Voice flow: ASR (local) → LLM (selected per turn) → TTS (local) + agent RAG/tools.
+asr:
+  model_size: small
+  device: cpu
+  compute_type: int8
+
+tts:
+  backend: kokoro
+  kokoro_lang_code: a
+  kokoro_voice: af_heart
+  kokoro_speed: 1.0
+
+llm_models:
+  default: remote_model_on_remote_sim_im_cpu
+  models:
+    local_model_on_thor_machine:
+      label: Local model on imu-thor
+      backend: hf
+      hf_model: Qwen/Qwen2.5-1.5B-Instruct
+      hf_device: auto
+      hf_max_new_tokens: 256
+      temperature: 0.2
+      system_prompt: "You are a helpful voice assistant for I Machines. Be accurate and concise."
+
+    remote_model_on_remote_sim_im_cpu:
+      label: Remote model on sim IM CPU
+      backend: remote
+      remote_base_url: http://172.16.1.7:8080
+      remote_model: local-model
+      remote_api_key: abcdefg
+      max_tokens: 256
+      temperature: 0.2
+      system_prompt: "You are a helpful voice assistant for I Machines. Be accurate and concise."
+
+agent:
+  enabled: true
+  knowledge_dir: data/knowledge
+  knowledge_index: data/knowledge_index.json
+  rag_top_k: 3
+  max_tool_steps: 3
+  inject_rag: true

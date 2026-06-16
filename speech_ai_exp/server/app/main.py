@@ -5,9 +5,10 @@ import shutil
 import tempfile
 from contextlib import asynccontextmanager
 from pathlib import Path
+from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -22,7 +23,8 @@ logger = logging.getLogger(__name__)
 
 cfg = ServerConfig.from_env()
 sessions = SessionStore(cfg.sessions_dir)
-pipeline = PipelineService(cfg.staged_config)
+_server_root = Path(__file__).resolve().parents[1]
+pipeline = PipelineService(cfg.staged_config, server_root=_server_root)
 
 
 @asynccontextmanager
@@ -69,6 +71,19 @@ class TurnResponse(BaseModel):
     timings: Timings
     context_messages: int
     turn_count: int
+    rag_sources: list[str] = []
+    tool_calls: list[dict[str, Any]] = []
+    agent_enabled: bool = False
+    llm_model: str = ""
+    llm_model_label: str = ""
+
+
+class LlmModelOption(BaseModel):
+    id: str
+    label: str
+    backend: str
+    loaded: bool = False
+    is_default: bool = False
 
 
 class SessionResponse(BaseModel):
@@ -81,12 +96,33 @@ class SessionResponse(BaseModel):
 
 @app.get("/health")
 def health() -> dict[str, Any]:
+    default_llm = pipeline.llm_registry.default_id if pipeline.llm_registry else None
     return {
         "status": "ok" if pipeline.ready else "loading",
         "pipeline_ready": pipeline.ready,
         "pipeline_error": pipeline.error,
         "config": str(cfg.staged_config),
+        "agent": pipeline.agent_info if pipeline.ready else {"enabled": False},
+        "llm_models": pipeline.list_llm_models() if pipeline.ready else [],
+        "llm_default": default_llm,
     }
+
+
+@app.get("/api/llm-models", response_model=list[LlmModelOption])
+def list_llm_models() -> list[LlmModelOption]:
+    if not pipeline.ready:
+        raise HTTPException(503, pipeline.error or "Pipeline not ready")
+    default_id = pipeline.llm_registry.default_id if pipeline.llm_registry else ""
+    return [
+        LlmModelOption(
+            id=m["id"],
+            label=m["label"],
+            backend=m["backend"],
+            loaded=m.get("loaded", False),
+            is_default=m["id"] == default_id,
+        )
+        for m in pipeline.list_llm_models()
+    ]
 
 
 @app.get("/api/sessions", response_model=list[SessionSummary])
@@ -116,7 +152,11 @@ def delete_session(session_id: str) -> dict[str, str]:
 
 
 @app.post("/api/sessions/{session_id}/turn", response_model=TurnResponse)
-async def post_turn(session_id: str, audio: UploadFile = File(...)) -> TurnResponse:
+async def post_turn(
+    session_id: str,
+    audio: UploadFile = File(...),
+    llm_model: str | None = Form(default=None),
+) -> TurnResponse:
     session = _require_session(session_id)
     if not pipeline.ready:
         raise HTTPException(503, pipeline.error or "Pipeline not ready")
@@ -142,7 +182,15 @@ async def post_turn(session_id: str, audio: UploadFile = File(...)) -> TurnRespo
         prepare_wav_for_asr(tmp_path, user_wav)
         history = session.history_messages()
         context_messages = len(history)
-        profile = pipeline.run_turn(user_wav, history=history, out_wav_path=reply_path)
+        profile = pipeline.run_turn(
+            user_wav,
+            history=history,
+            out_wav_path=reply_path,
+            session_memory=session.agent_memory,
+            llm_model=llm_model,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
     except RuntimeError as e:
         raise HTTPException(400, str(e)) from e
     except Exception as e:
@@ -151,6 +199,14 @@ async def post_turn(session_id: str, audio: UploadFile = File(...)) -> TurnRespo
     finally:
         tmp_path.unlink(missing_ok=True)
 
+    agent_meta = dict(profile.meta.get("agent") or {})
+    llm_meta = dict(profile.meta.get("llm") or {})
+    llm_model_id = str(llm_meta.get("model_id") or llm_model or "")
+    model_label = llm_model_id
+    for m in pipeline.list_llm_models():
+        if m["id"] == llm_model_id:
+            model_label = str(m["label"])
+            break
     turn = TurnRecord(
         turn_index=turn_index,
         created_at=_utc_now(),
@@ -164,6 +220,7 @@ async def post_turn(session_id: str, audio: UploadFile = File(...)) -> TurnRespo
             "llm_generation_s": profile.llm_generation_s,
             "tts_s": profile.tts_s,
         },
+        agent={**agent_meta, "llm_model": llm_model_id, "llm_model_label": model_label},
     )
     session.turns.append(turn)
     sessions.update(session)
@@ -182,6 +239,11 @@ async def post_turn(session_id: str, audio: UploadFile = File(...)) -> TurnRespo
         ),
         context_messages=context_messages,
         turn_count=len(session.turns),
+        rag_sources=list(agent_meta.get("rag_sources") or []),
+        tool_calls=list(agent_meta.get("tool_calls") or []),
+        agent_enabled=pipeline.agent_enabled,
+        llm_model=llm_model_id,
+        llm_model_label=model_label,
     )
 
 

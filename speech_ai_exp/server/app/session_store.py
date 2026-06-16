@@ -22,6 +22,7 @@ class TurnRecord:
     user_audio: str
     reply_audio: str
     timings: dict[str, float] = field(default_factory=dict)
+    agent: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -36,6 +37,7 @@ class TurnRecord:
             user_audio=str(data["user_audio"]),
             reply_audio=str(data["reply_audio"]),
             timings=dict(data.get("timings") or {}),
+            agent=dict(data.get("agent") or {}),
         )
 
 
@@ -45,6 +47,7 @@ class Session:
     created_at: str
     updated_at: str
     turns: list[TurnRecord] = field(default_factory=list)
+    agent_memory: dict[str, str] = field(default_factory=dict)
 
     def history_messages(self) -> list[dict[str, str]]:
         out: list[dict[str, str]] = []
@@ -61,6 +64,7 @@ class Session:
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "turns": [t.to_dict() for t in self.turns],
+            "agent_memory": dict(self.agent_memory),
         }
 
     @classmethod
@@ -70,6 +74,9 @@ class Session:
             created_at=str(data["created_at"]),
             updated_at=str(data["updated_at"]),
             turns=[TurnRecord.from_dict(t) for t in data.get("turns") or []],
+            agent_memory={
+                str(k): str(v) for k, v in (data.get("agent_memory") or {}).items()
+            },
         )
 
 
