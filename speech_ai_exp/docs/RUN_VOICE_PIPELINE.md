@@ -2,7 +2,13 @@
 
 Operator guide for the **FastAPI voice chatbot** on `imu-thor` (example host `172.16.1.103`).
 
-**Default (recommended):** one server start with **both LLM options** available. Users pick **Local model on imu-thor** or **Remote model on sim IM CPU** from a dropdown in the web UI — no restart required.
+**Default (recommended):** one server start with **three LLM options** in the web UI dropdown — no restart required:
+
+| UI label | Backend |
+|----------|---------|
+| Qwen2.5-1B LLM on NVIDIA Thor Machine with ARM64 CPU | Local HF `Qwen/Qwen2.5-1.5B-Instruct` (lazy load) |
+| Gemma3-1B LLM on NVIDIA Thor Machine with ARM64 CPU | Local HF `google/gemma-3-1b-it` (lazy load; needs `HF_TOKEN`) |
+| Gemma3-1B LLM on Intelligent Machine IMI-RISCV Qemu CPU Emulator | HTTP API at `172.16.1.7:8080` |
 
 Config: [`demo_staged_kokoro_agent_dual.yaml`](../project/configs/demo_staged_kokoro_agent_dual.yaml)
 
@@ -25,14 +31,76 @@ Open the chat UI → use the **LLM model** dropdown before recording.
 
 | UI option | Backend |
 |-----------|---------|
-| Local model on imu-thor | Qwen2.5-1.5B on imu-thor (lazy-loaded on first use) |
-| Remote model on sim IM CPU | HTTP API at `172.16.1.7:8080` |
+| Qwen2.5-1B LLM on NVIDIA Thor Machine with ARM64 CPU | Local HF Qwen (lazy load) |
+| Gemma3-1B LLM on NVIDIA Thor Machine with ARM64 CPU | Local HF Gemma3-1B (lazy load; `HF_TOKEN` in `.env.local`) |
+| Gemma3-1B LLM on Intelligent Machine IMI-RISCV Qemu CPU Emulator | Remote HTTP API |
 
 Verify models are listed:
 
 ```bash
 curl -s http://127.0.0.1:8000/api/llm-models | python3 -m json.tool
 ```
+
+---
+
+## Local Gemma3-1B on Thor (Hugging Face)
+
+Runs **in-process** on imu-thor (same as Qwen), much faster than the remote RISC-V simulator.
+
+1. Accept the license: https://huggingface.co/google/gemma-3-1b-it  
+2. Create a token: https://huggingface.co/settings/tokens  
+3. Add to `server/.env.local`:
+   ```bash
+   HF_TOKEN=hf_your_token_here
+   ```
+4. Restart uvicorn. Select **Gemma3-1B LLM on NVIDIA Thor Machine with ARM64 CPU** in the UI.  
+   First turn downloads and loads the model (may take several minutes).
+
+Compare **local Gemma3** (fast, Thor ARM64) vs **remote Gemma3** (slow, IMI-RISCV Qemu) for the same model family.
+
+---
+
+## Remote simulator LLM (IMI-RISCV Qemu) — slow but valid
+
+Use this when you need to prove the **Gemma3** path on the **IMI-RISCV Qemu CPU emulator** (`172.16.1.7:8080`). It is typically **10×–50× slower** than the local Qwen model on Thor — multi-minute (or longer) turns are normal with agent + RAG.
+
+### 1. Set timeout in `server/.env.local`
+
+```bash
+# Add or update in server/.env.local
+REMOTE_LLM_TIMEOUT_SEC=3600
+```
+
+| Value | Use |
+|-------|-----|
+| `3600` (default) | **1 hour** — recommended for simulator demos |
+| `7200` | **2 hours** — long agent turns with full RAG + tool loop |
+
+Restart uvicorn after editing `.env.local`.
+
+### 2. UI settings
+
+- **LLM model:** Gemma3-1B LLM on Intelligent Machine IMI-RISCV Qemu CPU Emulator  
+- **Agent tools:** On (if testing RAG/tools)  
+- Wait for **“Processing turn… remote simulator may take many minutes”** — do not refresh.
+
+### 3. Verify remote API before voice
+
+```bash
+curl -s --max-time 120 -X POST http://172.16.1.7:8080/v1/chat/completions \
+  -H "Content-Type: application/json" -H "Authorization: Bearer abcdefg" \
+  -d '{"model":"local-model","stream":false,"messages":[{"role":"user","content":"Say hi."}],"max_tokens":16}'
+```
+
+### 4. What to expect in server logs
+
+```
+INFO staged_voice.llm: Remote LLM request | url=http://172.16.1.7:8080/v1/chat/completions | timeout_s=3600 | ...
+INFO staged_voice.llm: LLM call #1 | ... | duration_s=...
+INFO staged_voice.llm: LLM turn complete | calls=1 | llm_wall_s=...
+```
+
+If you still hit **504 timed out**, raise `REMOTE_LLM_TIMEOUT_SEC` or shorten the turn (fewer prior messages, Tools off for a plain-LLM smoke test).
 
 ---
 
@@ -249,8 +317,10 @@ Browsers block the microphone on plain HTTP for LAN IPs. Use the SSH tunnel abov
 
 ### What to try
 
-- *“What are the support hours?”* — tests RAG from knowledge base
-- *“What is Intelligent Machines’ platform vision?”* — tests your company overview doc
+Quick one-liners (e-commerce agent):
+
+- *“Where is my latest order?”* — tests RAG
+- Full **4-turn** script (RAG + web search + history): [DEMO_VOICE_QUERIES.md](DEMO_VOICE_QUERIES.md#featured-rag--web-search--conversation-history-4-turns)
 - DevTools → Network → `turn` request → check `rag_sources` and `reply_text` in JSON
 
 ---

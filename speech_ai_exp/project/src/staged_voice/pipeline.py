@@ -7,16 +7,14 @@ from typing import Any
 
 from staged_voice.backends.base_types import ASRBackend, ChatMessage, LLMBackend, TTSBackend
 from staged_voice.config import RunConfig
+from staged_voice.llm_call_log import log_llm_call, log_llm_turn_summary
 from staged_voice.profiling import StageProfile
+from staged_voice.prompt_stats import measure_prompt, measure_text, summarize_llm_calls
 
 AgentRunner = Callable[
     [str, list[ChatMessage], LLMBackend, RunConfig],
     tuple[str, dict[str, Any]],
 ]
-
-
-def _rough_tokens_from_text(text: str) -> float:
-    return max(len(text.strip()), 1) / 4.0
 
 
 class StagedVoicePipeline:
@@ -43,6 +41,8 @@ class StagedVoicePipeline:
         llm: LLMBackend | None = None,
         llm_cfg: RunConfig | None = None,
         llm_model_id: str | None = None,
+        llm_model_label: str | None = None,
+        tools_enabled: bool | None = None,
     ) -> StageProfile:
         wav_path = wav_path.expanduser().resolve()
         history = list(history or [])
@@ -84,6 +84,7 @@ class StagedVoicePipeline:
             if session_memory is not None and "session_memory" in agent_meta:
                 session_memory.update(agent_meta["session_memory"])
         else:
+            prompt_stats = measure_prompt(active_cfg.system_prompt, llm_messages)
             chunks: list[str] = []
             stream = active_llm.iter_chat_messages(
                 messages=llm_messages,
@@ -101,14 +102,49 @@ class StagedVoicePipeline:
             if first_token:
                 llm_ttft_s = llm_generation_s
             reply_text = "".join(chunks).strip()
+            output_stats = measure_text("".join(chunks))
+            llm_usage = summarize_llm_calls(
+                [
+                    {
+                        "call_index": 1,
+                        **prompt_stats,
+                        "output_chars": output_stats["chars"],
+                        "output_tokens_est": output_stats["tokens_est"],
+                    }
+                ]
+            )
+            agent_meta["llm_usage"] = llm_usage
+            log_llm_call(
+                model_id=llm_model_id,
+                model_label=llm_model_label,
+                cfg=active_cfg,
+                call_index=1,
+                prompt_chars=int(prompt_stats["prompt_chars"]),
+                prompt_tokens_est=float(prompt_stats["prompt_tokens_est"]),
+                output_chars=int(output_stats["chars"]),
+                output_tokens_est=float(output_stats["tokens_est"]),
+                duration_s=llm_generation_s,
+                tools_enabled=tools_enabled,
+            )
 
         llm_chars = len(reply_text)
-        tok_est = _rough_tokens_from_text(reply_text)
+        usage = agent_meta.get("llm_usage") or {}
+        log_llm_turn_summary(
+            model_id=llm_model_id,
+            model_label=llm_model_label,
+            cfg=active_cfg,
+            usage=usage,
+            llm_generation_s=llm_generation_s,
+            tools_enabled=tools_enabled,
+        )
+        tok_est = float(usage.get("output_tokens_est") or measure_text(reply_text)["tokens_est"])
         llm_tps = tok_est / llm_generation_s if llm_generation_s > 0 else 0.0
         meta["llm"] = {
             "backend": active_cfg.llm_backend,
             "model_id": llm_model_id,
         }
+        if usage:
+            meta["llm"]["usage"] = usage
         if agent_meta:
             meta["agent"] = agent_meta
 

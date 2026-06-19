@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Build a persisted RAG chunk index from server/data/knowledge/."""
+"""Build a persisted RAG chunk index from server/data/knowledge/.
+
+No server or staged_voice install required — only imports app.agent.rag.
+Optional: activate project venv if you use a different Python layout.
+"""
 
 from __future__ import annotations
 

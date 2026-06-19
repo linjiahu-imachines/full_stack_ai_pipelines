@@ -5,7 +5,6 @@ import shutil
 import tempfile
 from contextlib import asynccontextmanager
 from pathlib import Path
-from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
@@ -62,6 +61,16 @@ class Timings(BaseModel):
     tts_s: float
 
 
+class LlmUsage(BaseModel):
+    prompt_chars: int = 0
+    prompt_tokens_est: float = 0
+    system_chars: int = 0
+    messages_chars: int = 0
+    output_chars: int = 0
+    output_tokens_est: float = 0
+    llm_calls: int = 1
+
+
 class TurnResponse(BaseModel):
     turn_index: int
     transcript: str
@@ -76,6 +85,8 @@ class TurnResponse(BaseModel):
     agent_enabled: bool = False
     llm_model: str = ""
     llm_model_label: str = ""
+    tools_enabled: bool = True
+    llm_usage: LlmUsage | None = None
 
 
 class LlmModelOption(BaseModel):
@@ -151,11 +162,18 @@ def delete_session(session_id: str) -> dict[str, str]:
     return {"status": "deleted", "session_id": session_id}
 
 
+def _parse_form_bool(value: str | None, *, default: bool = True) -> bool:
+    if value is None or value == "":
+        return default
+    return str(value).strip().lower() in ("1", "true", "yes", "on")
+
+
 @app.post("/api/sessions/{session_id}/turn", response_model=TurnResponse)
 async def post_turn(
     session_id: str,
     audio: UploadFile = File(...),
     llm_model: str | None = Form(default=None),
+    tools_enabled: str | None = Form(default="true"),
 ) -> TurnResponse:
     session = _require_session(session_id)
     if not pipeline.ready:
@@ -182,17 +200,27 @@ async def post_turn(
         prepare_wav_for_asr(tmp_path, user_wav)
         history = session.history_messages()
         context_messages = len(history)
+        use_tools = _parse_form_bool(tools_enabled, default=True)
         profile = pipeline.run_turn(
             user_wav,
             history=history,
             out_wav_path=reply_path,
             session_memory=session.agent_memory,
             llm_model=llm_model,
+            tools_enabled=use_tools,
         )
     except ValueError as e:
         raise HTTPException(400, str(e)) from e
     except RuntimeError as e:
-        raise HTTPException(400, str(e)) from e
+        msg = str(e)
+        if "timed out" in msg.lower() or "unreachable" in msg.lower():
+            raise HTTPException(504, msg) from e
+        raise HTTPException(400, msg) from e
+    except TimeoutError as e:
+        raise HTTPException(
+            504,
+            "LLM request timed out. Try the local Qwen model or increase REMOTE_LLM_TIMEOUT_SEC.",
+        ) from e
     except Exception as e:
         logger.exception("Turn failed")
         raise HTTPException(500, f"Pipeline error: {e}") from e
@@ -201,6 +229,20 @@ async def post_turn(
 
     agent_meta = dict(profile.meta.get("agent") or {})
     llm_meta = dict(profile.meta.get("llm") or {})
+    usage_raw = dict(llm_meta.get("usage") or agent_meta.get("llm_usage") or {})
+    llm_usage = (
+        LlmUsage(
+            prompt_chars=int(usage_raw.get("prompt_chars", 0)),
+            prompt_tokens_est=float(usage_raw.get("prompt_tokens_est", 0)),
+            system_chars=int(usage_raw.get("system_chars", 0)),
+            messages_chars=int(usage_raw.get("messages_chars", 0)),
+            output_chars=int(usage_raw.get("output_chars", 0)),
+            output_tokens_est=float(usage_raw.get("output_tokens_est", 0)),
+            llm_calls=int(usage_raw.get("llm_calls", 1)),
+        )
+        if usage_raw
+        else None
+    )
     llm_model_id = str(llm_meta.get("model_id") or llm_model or "")
     model_label = llm_model_id
     for m in pipeline.list_llm_models():
@@ -220,7 +262,7 @@ async def post_turn(
             "llm_generation_s": profile.llm_generation_s,
             "tts_s": profile.tts_s,
         },
-        agent={**agent_meta, "llm_model": llm_model_id, "llm_model_label": model_label},
+        agent={**agent_meta, "llm_model": llm_model_id, "llm_model_label": model_label, "tools_enabled": use_tools, "llm_usage": usage_raw},
     )
     session.turns.append(turn)
     sessions.update(session)
@@ -244,6 +286,8 @@ async def post_turn(
         agent_enabled=pipeline.agent_enabled,
         llm_model=llm_model_id,
         llm_model_label=model_label,
+        tools_enabled=use_tools,
+        llm_usage=llm_usage,
     )
 
 

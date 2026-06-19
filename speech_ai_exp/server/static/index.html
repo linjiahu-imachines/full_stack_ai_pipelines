@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Intellengent Machines Agentic Assitant</title>
   <link rel="stylesheet" href="/styles.css" />
+  <script src="/app.js" defer></script>
 </head>
 <body>
   <header class="site-header">
@@ -31,17 +32,23 @@
     <section class="model-picker">
       <label for="llm-model-select">LLM model</label>
       <select id="llm-model-select" aria-label="Select LLM model"></select>
+      <label for="tools-enabled-select">Agent tools</label>
+      <select id="tools-enabled-select" aria-label="Enable or disable agent tools">
+        <option value="true">On — RAG, web search, tools</option>
+        <option value="false">Off — plain LLM only</option>
+      </select>
     </section>
 
     <div id="chat-log" class="chat-log">
-      <p class="empty-hint">Start a <strong>New conversation</strong>, then record below.</p>
+      <p class="empty-hint">Start a <strong>New conversation</strong>, then click <strong>Start listening</strong> and speak.</p>
     </div>
 
+    <p id="listen-status" class="listen-status hidden" aria-live="polite"></p>
     <div id="busy" class="busy hidden">Processing turn…</div>
 
     <section class="controls">
-      <button type="button" id="btn-record" class="btn primary">Record</button>
-      <button type="button" id="btn-stop" class="btn" disabled>Stop &amp; send</button>
+      <button type="button" id="btn-record" class="btn primary">Start listening</button>
+      <button type="button" id="btn-stop" class="btn" disabled>Stop listening</button>
       <label class="btn upload-label">
         Upload WAV
         <input type="file" id="file-upload" accept="audio/*,.wav,.webm,.ogg,.mp3,.m4a" hidden />
@@ -68,7 +75,5 @@
       <div id="history-all" class="history-panel hidden"></div>
     </div>
   </div>
-
-  <script src="/app.js"></script>
 </body>
 </html>

@@ -33,6 +33,11 @@ class RunConfig:
     hf_device: str = "auto"
     hf_max_new_tokens: int = 256
     hf_torch_dtype: str = "auto"  # auto | bf16 | fp16 | fp32
+    # Optional demo/display overrides for structured logs (not used for inference).
+    log_model: str = ""
+    log_runs_on: str = ""
+    log_backend: str = ""
+    log_id: str = ""
 
     # TTS: espeak | kokoro
     tts_backend: str = "espeak"  # espeak | kokoro
@@ -72,6 +77,14 @@ def overlay_from_yaml_dict(cfg: RunConfig, data: dict[str, Any]) -> None:
         cfg.hf_device = l.get("hf_device", cfg.hf_device)
         cfg.hf_max_new_tokens = int(l.get("hf_max_new_tokens", cfg.hf_max_new_tokens))
         cfg.hf_torch_dtype = l.get("hf_torch_dtype", cfg.hf_torch_dtype)
+        if "log_model" in l:
+            cfg.log_model = str(l.get("log_model") or "")
+        if "log_runs_on" in l:
+            cfg.log_runs_on = str(l.get("log_runs_on") or "")
+        if "log_backend" in l:
+            cfg.log_backend = str(l.get("log_backend") or "")
+        if "log_id" in l:
+            cfg.log_id = str(l.get("log_id") or "")
     if "tts" in data:
         t = data["tts"]
         cfg.tts_backend = t.get("backend", cfg.tts_backend)

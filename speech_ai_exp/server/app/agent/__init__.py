@@ -1,3 +1,3 @@
-from app.agent.service import AgentResult, AgentService
+"""Agent layer: RAG, tools, and tool loop (import submodules directly)."""
 
-__all__ = ["AgentResult", "AgentService"]
+__all__: list[str] = []

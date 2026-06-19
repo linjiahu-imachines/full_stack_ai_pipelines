@@ -56,9 +56,10 @@ body {
 .session-meta { font-size: 0.85rem; color: var(--muted); }
 
 .model-picker {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.5rem 0.75rem;
   align-items: center;
-  gap: 0.75rem;
   margin: 0.75rem 0 1rem;
   padding: 0.75rem 1rem;
   background: var(--card);
@@ -71,7 +72,6 @@ body {
   white-space: nowrap;
 }
 .model-picker select {
-  flex: 1;
   min-width: 0;
   padding: 0.5rem 0.65rem;
   border: 1px solid var(--border);
@@ -124,6 +124,28 @@ body {
 .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn.recording { background: #dc2626; border-color: #dc2626; color: #fff; }
+.btn.listening { background: #059669; border-color: #059669; color: #fff; }
+
+.listen-status {
+  text-align: center;
+  font-size: 0.9rem;
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+}
+.listen-status.speaking {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+.listen-status.processing {
+  background: #f3f4f6;
+  border-color: var(--border);
+  color: var(--muted);
+}
 
 .busy { text-align: center; color: var(--muted); margin-bottom: 0.75rem; }
 

@@ -12,7 +12,12 @@ llm:
   remote_api_key: abcdefg
   max_tokens: 256
   temperature: 0.2
-  system_prompt: "You are a helpful voice assistant for I Machines. Be accurate and concise."
+  system_prompt: >-
+    You are a voice customer-service agent for Alex Morgan at Horizon Store
+    (fictional e-commerce). Help with orders, shipping, returns, refunds,
+    warranties, loyalty, and account questions. Use only facts from the
+    knowledge base. Address the customer as Alex. Be accurate and concise
+    for spoken delivery.
 
 tts:
   backend: kokoro

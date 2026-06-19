@@ -7,7 +7,7 @@ Lightweight agent between **ASR transcript** and **TTS**, implemented in `server
 | Feature | Implementation |
 |---------|----------------|
 | **RAG** | BM25 keyword retrieval over `server/data/knowledge/`; index at `data/knowledge_index.json` |
-| **Tools** | `search_knowledge_base`, `get_current_time`, `remember`, `recall` |
+| **Tools** | `search_knowledge_base`, `search_web` (Tavily), `get_current_time`, `remember`, `recall` |
 | **Session memory** | `remember` / `recall` store key–value facts in `session.json` |
 | **Chat history** | Unchanged — prior turns still passed to the agent LLM loop |
 
@@ -50,6 +50,49 @@ FINAL: Short spoken answer for the user.
 
 Max tool steps: `agent.max_tool_steps` (default 3).
 
+## Web search (Tavily)
+
+Public web search uses the [Tavily](https://tavily.com/) Search API (AI-oriented search, similar to what many agents use).
+
+1. Sign up at https://tavily.com/ and create an API key (`tvly-...`).
+2. Enable in YAML (`demo_staged_kokoro_agent_dual.yaml`):
+
+```yaml
+agent:
+  web_search:
+    enabled: true
+    provider: tavily
+    max_results: 5
+    search_depth: basic   # or advanced
+```
+
+3. Set the key in `server/.env.local` (recommended — loaded automatically at startup):
+
+```bash
+cd /home/linhu/projects/speech_ai_exp/server
+cp .env.local.example .env.local
+nano .env.local   # paste your tvly-... key
+```
+
+Example `server/.env.local`:
+
+```
+TAVILY_API_KEY=tvly-your-key-here
+WEB_SEARCH_ENABLED=true
+```
+
+Or export in the shell instead: `export TAVILY_API_KEY=tvly-...`
+
+4. Restart uvicorn. Check `/health` → `"agent": { ..., "web_search_enabled": true }`.
+
+The LLM can call:
+
+```
+TOOL_CALL: {"name": "search_web", "arguments": {"query": "latest news about edge AI"}}
+```
+
+Use **`search_knowledge_base`** for Alex's orders, shipping, returns, and store policies; use **`search_web`** for public or current information online.
+
 ## Architecture
 
 ```
@@ -71,7 +114,6 @@ Turn records in `session.json` include an `agent` object.
 
 ## Future (not in v1)
 
-- Remote LLM on 172.16.1.77
 - Embedding-based RAG
 - LangGraph swap behind same `AgentService` interface
 

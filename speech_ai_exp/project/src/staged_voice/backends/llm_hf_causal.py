@@ -15,6 +15,8 @@ class HFCausalLM:
         device: str = "auto",
         torch_dtype: str = "auto",
     ) -> None:
+        import os
+
         import torch
         from transformers import AutoModelForCausalLM, AutoTokenizer, TextIteratorStreamer
 
@@ -22,16 +24,37 @@ class HFCausalLM:
         self._TextIteratorStreamer = TextIteratorStreamer
 
         dtype = self._resolve_dtype(torch, torch_dtype)
-        self._tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
-        self._model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            torch_dtype=dtype,
-            device_map=device if device != "cpu" else None,
-            trust_remote_code=True,
-        )
+        hf_token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
+        tok_kwargs: dict[str, Any] = {"trust_remote_code": True}
+        model_kwargs: dict[str, Any] = {
+            "torch_dtype": dtype,
+            "device_map": device if device != "cpu" else None,
+            "trust_remote_code": True,
+        }
+        if hf_token:
+            tok_kwargs["token"] = hf_token
+            model_kwargs["token"] = hf_token
+
+        self._tokenizer = AutoTokenizer.from_pretrained(model_name, **tok_kwargs)
+        if self._tokenizer.pad_token is None and self._tokenizer.eos_token is not None:
+            self._tokenizer.pad_token = self._tokenizer.eos_token
+
+        model_cls = self._resolve_model_class(model_name, AutoModelForCausalLM)
+        self._model = model_cls.from_pretrained(model_name, **model_kwargs)
         if device == "cpu":
             self._model = self._model.to("cpu")
         self._model.eval()
+
+    @staticmethod
+    def _resolve_model_class(model_name: str, default_cls: Any) -> Any:
+        if "gemma-3" not in model_name.lower():
+            return default_cls
+        try:
+            from transformers import Gemma3ForCausalLM
+
+            return Gemma3ForCausalLM
+        except ImportError:
+            return default_cls
 
     @staticmethod
     def _resolve_dtype(torch: Any, name: str) -> Any:

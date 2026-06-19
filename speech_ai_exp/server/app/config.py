@@ -4,6 +4,8 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from app.env_file import load_server_env
+
 
 @dataclass
 class ServerConfig:
@@ -16,6 +18,7 @@ class ServerConfig:
     @classmethod
     def from_env(cls) -> ServerConfig:
         root = Path(__file__).resolve().parents[1]
+        load_server_env(root)
         cfg = cls(
             host=os.environ.get("CHAT_HOST", "0.0.0.0"),
             port=int(os.environ.get("CHAT_PORT", "8000")),

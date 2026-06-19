@@ -8,6 +8,7 @@ const historyCurrent = document.getElementById("history-current");
 const historyAll = document.getElementById("history-all");
 const btnRecord = document.getElementById("btn-record");
 const btnStop = document.getElementById("btn-stop");
+const listenStatus = document.getElementById("listen-status");
 const sessionLabel = document.getElementById("session-label");
 const turnCountLabel = document.getElementById("turn-count-label");
 const statusLabel = document.getElementById("status-label");
@@ -15,8 +16,10 @@ const busyEl = document.getElementById("busy");
 const micBanner = document.getElementById("mic-banner");
 const fileUpload = document.getElementById("file-upload");
 const llmModelSelect = document.getElementById("llm-model-select");
+const toolsEnabledSelect = document.getElementById("tools-enabled-select");
 
 const LLM_MODEL_STORAGE_KEY = "chat_llm_model_id";
+const TOOLS_ENABLED_STORAGE_KEY = "chat_tools_enabled";
 let llmModels = [];
 
 function isSecureMicContext() {
@@ -63,8 +66,251 @@ function updateMicBanner() {
 }
 
 let sessionId = localStorage.getItem("chat_session_id") || null;
-let mediaRecorder = null;
-let chunks = [];
+
+/** Voice-activity detection tuning (browser mic). */
+const VAD = {
+  SILENCE_MS: 1000,
+  MIN_SPEECH_MS: 400,
+  MAX_TURN_MS: 30000,
+  TICK_MS: 50,
+  NOISE_ADAPT: 0.92,
+  SPEECH_MULT: 2.8,
+  MIN_THRESHOLD: 0.012,
+};
+
+const autoVoice = {
+  enabled: false,
+  phase: "off", // off | armed | speaking | processing
+  stream: null,
+  audioContext: null,
+  analyser: null,
+  vadTimer: null,
+  mediaRecorder: null,
+  chunks: [],
+  noiseFloor: 0.01,
+  speechStartedAt: 0,
+  recordStartedAt: 0,
+  silenceStartedAt: null,
+  finishing: false,
+};
+
+function rmsFromAnalyser(analyser) {
+  const data = new Float32Array(analyser.fftSize);
+  analyser.getFloatTimeDomainData(data);
+  let sum = 0;
+  for (let i = 0; i < data.length; i++) sum += data[i] * data[i];
+  return Math.sqrt(sum / data.length);
+}
+
+function speechThreshold() {
+  return Math.max(VAD.MIN_THRESHOLD, autoVoice.noiseFloor * VAD.SPEECH_MULT);
+}
+
+function updateListenUi() {
+  if (!listenStatus) return;
+  const { phase, enabled } = autoVoice;
+  if (!enabled || phase === "off") {
+    listenStatus.classList.add("hidden");
+    listenStatus.classList.remove("speaking", "processing");
+    listenStatus.textContent = "";
+    btnRecord.textContent = "Start listening";
+    btnRecord.classList.remove("listening", "recording");
+    btnStop.textContent = "Stop listening";
+    btnStop.disabled = true;
+    return;
+  }
+
+  listenStatus.classList.remove("hidden");
+  listenStatus.classList.remove("speaking", "processing");
+  btnRecord.disabled = true;
+  btnRecord.textContent = "Listening…";
+  btnRecord.classList.add("listening");
+  btnRecord.classList.remove("recording");
+  btnStop.disabled = phase === "processing";
+  btnStop.textContent = phase === "speaking" ? "Send now" : "Stop listening";
+
+  if (phase === "armed") {
+    listenStatus.textContent = "Waiting for you to speak… (pause ~1s when done)";
+  } else if (phase === "speaking") {
+    listenStatus.classList.add("speaking");
+    listenStatus.textContent = "Hearing you — pause when finished, or click Send now";
+    btnRecord.classList.remove("listening");
+    btnRecord.classList.add("recording");
+  } else if (phase === "processing") {
+    listenStatus.classList.add("processing");
+    listenStatus.textContent = "Processing your message…";
+    btnRecord.classList.remove("listening", "recording");
+  }
+}
+
+function clearVadTimer() {
+  if (autoVoice.vadTimer) {
+    clearInterval(autoVoice.vadTimer);
+    autoVoice.vadTimer = null;
+  }
+}
+
+function releaseAutoVoiceStream() {
+  clearVadTimer();
+  if (autoVoice.mediaRecorder && autoVoice.mediaRecorder.state !== "inactive") {
+    try {
+      autoVoice.mediaRecorder.stop();
+    } catch {
+      /* ignore */
+    }
+  }
+  autoVoice.mediaRecorder = null;
+  autoVoice.chunks = [];
+  if (autoVoice.stream) {
+    autoVoice.stream.getTracks().forEach((t) => t.stop());
+    autoVoice.stream = null;
+  }
+  if (autoVoice.audioContext) {
+    autoVoice.audioContext.close().catch(() => {});
+    autoVoice.audioContext = null;
+  }
+  autoVoice.analyser = null;
+  autoVoice.finishing = false;
+}
+
+function stopAutoListen() {
+  autoVoice.enabled = false;
+  autoVoice.phase = "off";
+  releaseAutoVoiceStream();
+  updateListenUi();
+  if (!busyEl.classList.contains("hidden")) return;
+  btnRecord.disabled = false;
+}
+
+function beginAutoRecording() {
+  if (!autoVoice.enabled || autoVoice.phase !== "armed" || !autoVoice.stream) return;
+  autoVoice.chunks = [];
+  autoVoice.finishing = false;
+  autoVoice.silenceStartedAt = null;
+  autoVoice.speechStartedAt = Date.now();
+  autoVoice.recordStartedAt = autoVoice.speechStartedAt;
+  autoVoice.mediaRecorder = new MediaRecorder(autoVoice.stream);
+  autoVoice.mediaRecorder.ondataavailable = (e) => {
+    if (e.data.size > 0) autoVoice.chunks.push(e.data);
+  };
+  autoVoice.mediaRecorder.start(VAD.TICK_MS);
+  autoVoice.phase = "speaking";
+  updateListenUi();
+}
+
+async function finishAutoRecording({ force = false } = {}) {
+  if (!autoVoice.enabled || autoVoice.phase !== "speaking" || autoVoice.finishing) return;
+  const spokeMs = Date.now() - autoVoice.speechStartedAt;
+  if (!force && spokeMs < VAD.MIN_SPEECH_MS) return;
+
+  autoVoice.finishing = true;
+  const recorder = autoVoice.mediaRecorder;
+  if (!recorder || recorder.state === "inactive") {
+    autoVoice.finishing = false;
+    autoVoice.phase = "armed";
+    autoVoice.silenceStartedAt = null;
+    updateListenUi();
+    return;
+  }
+
+  recorder.onstop = async () => {
+    const mime = recorder.mimeType || "audio/webm";
+    autoVoice.mediaRecorder = null;
+    const blob = new Blob(autoVoice.chunks, { type: mime });
+    autoVoice.chunks = [];
+    autoVoice.finishing = false;
+    autoVoice.silenceStartedAt = null;
+
+    if (blob.size < 256) {
+      autoVoice.phase = autoVoice.enabled ? "armed" : "off";
+      updateListenUi();
+      return;
+    }
+
+    autoVoice.phase = "processing";
+    updateListenUi();
+    await sendTurn(blob);
+  };
+  recorder.stop();
+}
+
+function vadTick() {
+  if (!autoVoice.enabled || !autoVoice.analyser) return;
+  if (autoVoice.phase === "processing" || autoVoice.finishing) return;
+
+  const rms = rmsFromAnalyser(autoVoice.analyser);
+  const threshold = speechThreshold();
+  const now = Date.now();
+  const isSpeech = rms > threshold;
+
+  if (autoVoice.phase === "armed") {
+    autoVoice.noiseFloor =
+      autoVoice.noiseFloor * VAD.NOISE_ADAPT + rms * (1 - VAD.NOISE_ADAPT);
+    if (isSpeech) beginAutoRecording();
+    return;
+  }
+
+  if (autoVoice.phase !== "speaking") return;
+
+  if (isSpeech) {
+    autoVoice.silenceStartedAt = null;
+    return;
+  }
+
+  if (!autoVoice.silenceStartedAt) autoVoice.silenceStartedAt = now;
+
+  const silentMs = now - autoVoice.silenceStartedAt;
+  const spokeMs = now - autoVoice.speechStartedAt;
+  const longEnough = spokeMs >= VAD.MIN_SPEECH_MS;
+  const pausedEnough = silentMs >= VAD.SILENCE_MS;
+  const hitMax = now - autoVoice.recordStartedAt >= VAD.MAX_TURN_MS;
+
+  if ((longEnough && pausedEnough) || hitMax) {
+    finishAutoRecording({ force: hitMax });
+  }
+}
+
+function resumeAutoListenAfterTurn() {
+  if (!autoVoice.enabled || !autoVoice.stream) {
+    stopAutoListen();
+    return;
+  }
+  autoVoice.phase = "armed";
+  autoVoice.silenceStartedAt = null;
+  autoVoice.finishing = false;
+  updateListenUi();
+}
+
+async function startAutoListen() {
+  if (autoVoice.enabled) return;
+  if (!sessionId) await createSession(true);
+  try {
+    const stream = await getMicStream();
+    const audioContext = new AudioContext();
+    await audioContext.resume();
+    const source = audioContext.createMediaStreamSource(stream);
+    const analyser = audioContext.createAnalyser();
+    analyser.fftSize = 2048;
+    source.connect(analyser);
+
+    autoVoice.stream = stream;
+    autoVoice.audioContext = audioContext;
+    autoVoice.analyser = analyser;
+    autoVoice.enabled = true;
+    autoVoice.phase = "armed";
+    autoVoice.noiseFloor = 0.01;
+    autoVoice.silenceStartedAt = null;
+    autoVoice.finishing = false;
+
+    clearVadTimer();
+    autoVoice.vadTimer = setInterval(vadTick, VAD.TICK_MS);
+
+    updateListenUi();
+  } catch (e) {
+    stopAutoListen();
+    alert("Microphone error: " + e.message);
+  }
+}
 
 async function checkHealth() {
   try {
@@ -74,6 +320,10 @@ async function checkHealth() {
     if (j.pipeline_ready && Array.isArray(j.llm_models) && j.llm_models.length && !llmModels.length) {
       llmModels = j.llm_models;
       populateLlmModelSelect(j.llm_default);
+      if (sessionId) {
+        const session = await fetchSession(sessionId);
+        if (session?.turns?.length) renderSession(session);
+      }
     }
   } catch {
     statusLabel.textContent = "Offline";
@@ -87,9 +337,33 @@ async function loadLlmModels() {
     llmModels = await r.json();
     const defaultId = llmModels.find((m) => m.is_default)?.id || llmModels[0]?.id;
     populateLlmModelSelect(defaultId);
+    if (sessionId) {
+      const session = await fetchSession(sessionId);
+      if (session?.turns?.length) renderSession(session);
+    }
   } catch (e) {
     console.warn("Failed to load LLM models:", e);
   }
+}
+
+function llmModelLabelForId(modelId) {
+  if (!modelId || !llmModels.length) return "";
+  const hit = llmModels.find((m) => m.id === modelId);
+  return hit?.label || "";
+}
+
+/** Prefer current registry label; fall back to label stored on the turn. */
+function llmModelLabelForTurn(turn) {
+  const agent = turn?.agent || {};
+  const fromRegistry = llmModelLabelForId(agent.llm_model);
+  if (fromRegistry) return fromRegistry;
+  return agent.llm_model_label || "";
+}
+
+function llmModelLabelFromResponse(j) {
+  const fromRegistry = llmModelLabelForId(j?.llm_model);
+  if (fromRegistry) return fromRegistry;
+  return j?.llm_model_label || "";
 }
 
 function populateLlmModelSelect(defaultId) {
@@ -114,10 +388,43 @@ function selectedLlmModelId() {
   return id;
 }
 
+function isRemoteLlmSelected() {
+  const id = selectedLlmModelId();
+  const m = llmModels.find((x) => x.id === id);
+  return m?.backend === "remote";
+}
+
+function setBusyMessage() {
+  if (!busyEl) return;
+  busyEl.textContent = isRemoteLlmSelected()
+    ? "Processing turn… remote IMI-RISCV simulator LLM can take many minutes; please wait."
+    : "Processing turn…";
+}
+
 if (llmModelSelect) {
   llmModelSelect.addEventListener("change", () => {
     selectedLlmModelId();
   });
+}
+
+function populateToolsEnabledSelect() {
+  if (!toolsEnabledSelect) return;
+  const saved = localStorage.getItem(TOOLS_ENABLED_STORAGE_KEY);
+  toolsEnabledSelect.value = saved === "false" ? "false" : "true";
+}
+
+function selectedToolsEnabled() {
+  if (!toolsEnabledSelect) return true;
+  const on = toolsEnabledSelect.value !== "false";
+  localStorage.setItem(TOOLS_ENABLED_STORAGE_KEY, on ? "true" : "false");
+  return on;
+}
+
+if (toolsEnabledSelect) {
+  toolsEnabledSelect.addEventListener("change", () => {
+    selectedToolsEnabled();
+  });
+  populateToolsEnabledSelect();
 }
 
 function escapeHtml(s) {
@@ -131,6 +438,19 @@ function escapeHtml(s) {
 function formatTiming(timings) {
   if (!timings) return "";
   return `ASR ${Number(timings.asr_s).toFixed(2)}s · LLM ${Number(timings.llm_generation_s).toFixed(2)}s · TTS ${Number(timings.tts_s).toFixed(2)}s`;
+}
+
+function formatLlmUsage(usage) {
+  if (!usage) return "";
+  const inTok = Math.round(Number(usage.prompt_tokens_est) || 0);
+  const outTok = Math.round(Number(usage.output_tokens_est) || 0);
+  const calls = Number(usage.llm_calls) || 1;
+  const callNote = calls > 1 ? ` · ${calls} LLM calls` : "";
+  return (
+    `LLM in ${Number(usage.prompt_chars).toLocaleString()} chars (~${inTok.toLocaleString()} tok)` +
+    ` · out ${Number(usage.output_chars).toLocaleString()} chars (~${outTok.toLocaleString()} tok)` +
+    callNote
+  );
 }
 
 function formatWhen(iso) {
@@ -161,15 +481,10 @@ function renderTurn(turn, sid) {
   `;
   const asstMsg = document.createElement("div");
   asstMsg.className = "msg assistant";
-  const meta = formatTiming(turn.timings);
-  const llmNote = turn.agent?.llm_model_label
-    ? `Model: ${turn.agent.llm_model_label}`
-    : "";
   asstMsg.innerHTML = `
     <div class="role">Assistant</div>
     <div class="text">${escapeHtml(turn.assistant_reply || "")}</div>
     <audio controls src="/api/sessions/${sid}/audio/${encodeURIComponent(turn.reply_audio)}"></audio>
-    ${meta || llmNote ? `<div class="meta">${escapeHtml([llmNote, meta].filter(Boolean).join(" · "))}</div>` : ""}
   `;
   group.appendChild(document.createElement("div")).className = "turn-header";
   group.querySelector(".turn-header").textContent = `Turn ${turn.turn_index}`;
@@ -205,7 +520,7 @@ function renderSession(session) {
   const sid = session.session_id;
   chatLog.innerHTML = "";
   if (turns.length === 0) {
-    chatLog.innerHTML = '<p class="empty-hint">Session ready. Record your first message below.</p>';
+    chatLog.innerHTML = '<p class="empty-hint">Session ready. Click <strong>Start listening</strong> and speak.</p>';
   } else {
     for (const t of turns) chatLog.appendChild(renderTurn(t, sid));
     chatLog.scrollTop = chatLog.scrollHeight;
@@ -237,6 +552,7 @@ async function createSession(skipConfirm = false) {
   ) {
     return null;
   }
+  if (autoVoice.enabled) stopAutoListen();
   const r = await fetch("/api/sessions", { method: "POST" });
   if (!r.ok) throw new Error(await r.text());
   const j = await r.json();
@@ -328,6 +644,7 @@ document.querySelectorAll(".tab").forEach((tab) => {
 
 async function sendTurn(blob) {
   if (!sessionId) await createSession(true);
+  setBusyMessage();
   busyEl.classList.remove("hidden");
   btnRecord.disabled = true;
   btnStop.disabled = true;
@@ -335,6 +652,7 @@ async function sendTurn(blob) {
   form.append("audio", blob, "utterance.webm");
   const modelId = selectedLlmModelId();
   if (modelId) form.append("llm_model", modelId);
+  form.append("tools_enabled", selectedToolsEnabled() ? "true" : "false");
   try {
     const r = await fetch(`/api/sessions/${sessionId}/turn`, { method: "POST", body: form });
     if (!r.ok) throw new Error(await r.text() || r.statusText);
@@ -344,13 +662,7 @@ async function sendTurn(blob) {
     const el = groups[groups.length - 1]?.querySelector(".msg.assistant audio");
     if (el) el.play().catch(() => playReplyAudio(j.reply_audio_url));
     else playReplyAudio(j.reply_audio_url);
-    if (j.llm_model_label) {
-      contextBanner.textContent = `Last reply used ${j.llm_model_label}.`;
-      contextBanner.classList.remove("hidden");
-    } else if (j.context_messages > 0) {
-      contextBanner.textContent = `Last reply used ${j.context_messages} prior message(s).`;
-      contextBanner.classList.remove("hidden");
-    }
+    updateContextBanner(j.turn_count ?? 0);
   } catch (e) {
     const errBox = document.createElement("div");
     errBox.className = "msg assistant";
@@ -358,27 +670,20 @@ async function sendTurn(blob) {
     chatLog.appendChild(errBox);
   } finally {
     busyEl.classList.add("hidden");
-    btnRecord.disabled = false;
-    btnStop.disabled = true;
-    btnRecord.classList.remove("recording");
+    if (autoVoice.enabled) {
+      resumeAutoListenAfterTurn();
+    } else {
+      btnRecord.disabled = false;
+      btnStop.disabled = true;
+      btnRecord.classList.remove("recording", "listening");
+      updateListenUi();
+    }
   }
 }
 
 btnRecord.addEventListener("click", async () => {
-  if (mediaRecorder?.state === "recording") return;
-  if (!sessionId) await createSession(true);
-  try {
-    const stream = await getMicStream();
-    chunks = [];
-    mediaRecorder = new MediaRecorder(stream);
-    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-    mediaRecorder.start();
-    btnRecord.classList.add("recording");
-    btnRecord.disabled = true;
-    btnStop.disabled = false;
-  } catch (e) {
-    alert("Microphone error: " + e.message);
-  }
+  if (autoVoice.enabled) return;
+  await startAutoListen();
 });
 
 if (fileUpload) {
@@ -386,19 +691,20 @@ if (fileUpload) {
     const file = fileUpload.files?.[0];
     fileUpload.value = "";
     if (!file) return;
+    if (autoVoice.enabled) stopAutoListen();
     await sendTurn(file);
   });
 }
 
 btnStop.addEventListener("click", async () => {
-  if (!mediaRecorder || mediaRecorder.state !== "recording") return;
-  mediaRecorder.onstop = async () => {
-    const blob = new Blob(chunks, { type: mediaRecorder.mimeType || "audio/webm" });
-    mediaRecorder.stream.getTracks().forEach((t) => t.stop());
-    mediaRecorder = null;
-    await sendTurn(blob);
-  };
-  mediaRecorder.stop();
+  if (!autoVoice.enabled) return;
+  if (autoVoice.phase === "speaking") {
+    await finishAutoRecording({ force: true });
+    return;
+  }
+  if (autoVoice.phase === "armed") {
+    stopAutoListen();
+  }
 });
 
 (async () => {

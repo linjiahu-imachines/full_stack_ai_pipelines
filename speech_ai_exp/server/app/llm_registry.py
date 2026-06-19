@@ -9,6 +9,12 @@ from typing import Any
 
 from staged_voice.backends.llm_factory import make_llm
 from staged_voice.config import RunConfig, overlay_from_yaml_dict
+from staged_voice.llm_call_log import (
+    describe_llm_backend,
+    describe_llm_host,
+    describe_model_id,
+    describe_model_name,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -61,10 +67,21 @@ class LlmRegistry:
 
         with entry._lock:
             if entry._llm is None:
-                logger.info("Loading LLM model %s (backend=%s)", mid, entry.info.backend)
+                logger.info(
+                    "Loading LLM | id=%s | label=%s | backend=%s | model=%s | runs_on=%s",
+                    describe_model_id(entry.cfg, mid),
+                    entry.info.label,
+                    describe_llm_backend(entry.cfg),
+                    describe_model_name(entry.cfg),
+                    describe_llm_host(entry.cfg),
+                )
                 entry._llm = make_llm(entry.cfg)
                 entry.info.loaded = True
-                logger.info("LLM model %s ready", mid)
+                logger.info(
+                    "LLM ready | id=%s | runs_on=%s",
+                    describe_model_id(entry.cfg, mid),
+                    describe_llm_host(entry.cfg),
+                )
 
         return entry._llm, entry.cfg, copy.copy(entry.info)
 
@@ -88,7 +105,7 @@ def parse_llm_registry(yaml_data: dict[str, Any], base_cfg: RunConfig) -> LlmReg
             default_id = "remote_model_on_remote_sim_im_cpu"
         models_raw = {
             "local_model_on_thor_machine": {
-                "label": "Local model on imu-thor",
+                "label": "Qwen2.5-1B LLM on NVIDIA Thor Machine with ARM64 CPU",
                 "backend": "hf",
                 "hf_model": base_cfg.hf_model_name,
                 "hf_device": base_cfg.hf_device,
@@ -97,7 +114,7 @@ def parse_llm_registry(yaml_data: dict[str, Any], base_cfg: RunConfig) -> LlmReg
                 "system_prompt": base_cfg.system_prompt,
             },
             "remote_model_on_remote_sim_im_cpu": {
-                "label": "Remote model on sim IM CPU",
+                "label": "Gemma3-1B LLM on Intelligent Machine IMI-RISCV Qemu CPU Emulator",
                 "backend": "remote",
                 "remote_base_url": base_cfg.remote_base_url,
                 "remote_model": base_cfg.remote_model,
@@ -129,5 +146,15 @@ def parse_llm_registry(yaml_data: dict[str, Any], base_cfg: RunConfig) -> LlmReg
     env_default = os.environ.get("LLM_MODEL_DEFAULT", "").strip()
     if env_default and env_default in entries:
         default_id = env_default
+
+    for mid, entry in entries.items():
+        logger.info(
+            "Registered LLM | id=%s | label=%s | backend=%s | model=%s | runs_on=%s",
+            describe_model_id(entry.cfg, mid),
+            entry.info.label,
+            describe_llm_backend(entry.cfg),
+            describe_model_name(entry.cfg),
+            describe_llm_host(entry.cfg),
+        )
 
     return LlmRegistry(base_cfg=base_cfg, models=entries, default_id=default_id)

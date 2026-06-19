@@ -25,6 +25,8 @@ def make_llm(cfg: RunConfig, *, env: dict[str, str] | None = None) -> Any:
         base_url = env.get("REMOTE_LLM_BASE_URL", cfg.remote_base_url)
         model = env.get("REMOTE_LLM_MODEL", cfg.remote_model)
         api_key = env.get("REMOTE_LLM_API_KEY", cfg.remote_api_key)
-        return RemoteChatLLM(base_url, model, api_key=api_key)
+        timeout_raw = env.get("REMOTE_LLM_TIMEOUT_SEC", "").strip()
+        timeout_sec = int(timeout_raw) if timeout_raw.isdigit() else None
+        return RemoteChatLLM(base_url, model, api_key=api_key, timeout_sec=timeout_sec)
 
     raise ValueError(f"Unknown llm backend: {cfg.llm_backend}")

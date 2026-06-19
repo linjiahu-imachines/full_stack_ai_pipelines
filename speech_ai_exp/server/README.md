@@ -18,7 +18,9 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 ### LLM model selection (UI)
 
-The default dual config exposes **Local model on imu-thor** and **Remote model on sim IM CPU** in the web UI dropdown. No restart needed to switch.
+The default dual config exposes **three** LLM choices in the web UI dropdown (two local HF + one remote simulator). No restart needed to switch.
+
+**Local Gemma3-1B:** accept the model license on [Hugging Face](https://huggingface.co/google/gemma-3-1b-it), then set `HF_TOKEN=hf_...` in `server/.env.local`. First turn lazy-loads weights (may take a few minutes).
 
 Legacy single-LLM configs (`demo_staged_kokoro_agent.yaml`, `demo_staged_kokoro_agent_remote.yaml`) still work but hide the dropdown choice.
 
@@ -36,7 +38,17 @@ python scripts/build_knowledge_index.py
 # restart uvicorn
 ```
 
-The server loads `data/knowledge_index.json` when it is up to date; otherwise it chunks from source files at startup.
+### Secrets (`server/.env.local`)
+
+For Tavily web search and other API keys:
+
+```bash
+cd server
+cp .env.local.example .env.local
+nano .env.local   # set TAVILY_API_KEY=tvly-...
+```
+
+`.env.local` is git-ignored and loaded automatically when the server starts.
 
 Open **http://127.0.0.1:8000/** (LAN example: **http://172.16.1.103:8000/**).
 
