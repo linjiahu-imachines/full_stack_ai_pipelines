@@ -315,6 +315,27 @@ Use port **18080** on the laptop to avoid conflicts with other apps on port 8000
 
 Browsers block the microphone on plain HTTP for LAN IPs. Use the SSH tunnel above for mic, or **Upload WAV** on the chat page.
 
+### Voice vs text input
+
+The chat UI supports two **input modes** (dropdown at top of page):
+
+| Mode | How to use |
+|------|------------|
+| **Voice** | **Start listening** → speak → auto-send after pause; or **Upload WAV** |
+| **Text** | Type in the text box → **Send** (Enter); optional **Speak reply (TTS)** checkbox |
+
+Text mode skips ASR (faster). TTS is off by default in text mode; enable **Speak reply** to hear the answer.
+
+API:
+
+```bash
+SESSION=$(curl -s -X POST http://127.0.0.1:8000/api/sessions | python3 -c "import sys,json; print(json.load(sys.stdin)['session_id'])")
+
+curl -s -X POST "http://127.0.0.1:8000/api/sessions/${SESSION}/turn/text" \
+  -H "Content-Type: application/json" \
+  -d '{"text":"Hi, this is John Smith. Status of order 784921?","tools_enabled":true,"speak_reply":false}'
+```
+
 ### What to try
 
 Quick one-liners (e-commerce agent):

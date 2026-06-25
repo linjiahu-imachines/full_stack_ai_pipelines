@@ -16,6 +16,8 @@ from staged_voice.prompt_stats import measure_prompt, measure_text, summarize_ll
 from app.agent.rag import KnowledgeBase, format_chunks_for_prompt
 from app.agent.tools import ToolRegistry
 from app.agent.web_search import WebSearchConfig, make_web_search, should_auto_web_search
+from app.db.config import DatabaseConfig
+from app.db.repositories import CommerceRepository
 
 logger = logging.getLogger(__name__)
 
@@ -49,16 +51,29 @@ class AgentConfig:
     max_tool_steps: int = 3
     inject_rag: bool = True
     web_search: WebSearchConfig = field(default_factory=WebSearchConfig)
+    database: DatabaseConfig = field(default_factory=DatabaseConfig)
 
 
 class AgentService:
     """RAG + tool loop without LangChain."""
 
-    def __init__(self, cfg: AgentConfig, kb: KnowledgeBase) -> None:
+    def __init__(
+        self,
+        cfg: AgentConfig,
+        kb: KnowledgeBase,
+        *,
+        commerce: CommerceRepository | None = None,
+    ) -> None:
         self._cfg = cfg
         self._kb = kb
+        self._commerce = commerce
         web = make_web_search(cfg.web_search)
-        self._tools = ToolRegistry(kb, rag_top_k=cfg.rag_top_k, web_search=web)
+        self._tools = ToolRegistry(
+            kb,
+            rag_top_k=cfg.rag_top_k,
+            web_search=web,
+            commerce=commerce,
+        )
 
     @property
     def web_search_enabled(self) -> bool:
@@ -71,6 +86,18 @@ class AgentService:
     @property
     def loaded_from_index(self) -> bool:
         return self._kb.loaded_from_index
+
+    @property
+    def rag_backend(self) -> str:
+        return getattr(self._kb, "rag_backend", "bm25")
+
+    @property
+    def vector_doc_count(self) -> int:
+        return getattr(self._kb, "vector_doc_count", 0)
+
+    @property
+    def commerce_enabled(self) -> bool:
+        return self._tools.commerce_enabled
 
     @property
     def index_path(self) -> Path:
@@ -93,17 +120,20 @@ class AgentService:
         t0 = time.perf_counter()
         self._tools.bind_session_memory(session_memory)
 
-        rag_hits = self._kb.search(transcript, top_k=self._cfg.rag_top_k)
-        rag_block = format_chunks_for_prompt(rag_hits)
-        rag_sources = list({h.chunk.source for h in rag_hits})
-
-        tool_calls: list[dict[str, Any]] = []
-        web_block = ""
-        if (
+        rag_hits: list = []
+        rag_sources: list[str] = []
+        auto_web = (
             self._tools.web_search_enabled
             and self._cfg.web_search.auto_search
             and should_auto_web_search(transcript)
-        ):
+        )
+        if self._cfg.inject_rag and not auto_web:
+            rag_hits = self._kb.search(transcript, top_k=self._cfg.rag_top_k)
+            rag_sources = list({h.chunk.source for h in rag_hits})
+
+        tool_calls: list[dict[str, Any]] = []
+        web_block = ""
+        if auto_web:
             web_query = transcript.strip()
             web_result = self._tools.run("search_web", {"query": web_query})
             web_block = web_result
@@ -116,6 +146,8 @@ class AgentService:
                 }
             )
             logger.info("Auto web search for query: %s", web_query[:80])
+
+        rag_block = format_chunks_for_prompt(rag_hits) if rag_hits else ""
 
         agent_system = _build_agent_system_prompt(
             base=system_prompt,
@@ -247,30 +279,50 @@ def _build_agent_system_prompt(
         "Available tools:",
         tools,
         "",
-        "To call a tool, output exactly one line:",
+        "To call a tool, output exactly one line (no other text on that line):",
         'TOOL_CALL: {"name": "<tool_name>", "arguments": {<json>}}',
         "",
         "When you can answer the user, output exactly one line:",
         "FINAL: <your short spoken answer>",
         "",
-        "Prefer search_knowledge_base for customer orders, shipping, returns, "
-        "refunds, warranties, loyalty, and policies in the knowledge base.",
+        "Routing rules:",
+        "- Orders, shipping, billing, returns, licenses, subscriptions: use lookup_customer, "
+        "lookup_order, lookup_invoice, lookup_payment_status, list_open_orders, "
+        "list_delayed_orders, lookup_licenses, lookup_subscription, get_active_order, "
+        "compare_support_plans, search_knowledge_base, and/or knowledge passages below.",
+        "- If the caller gives only a name or vague account request, use lookup_customer or "
+        "ask for customer ID / email, then remember it for follow-up turns.",
+        "- Spoken order numbers (e.g. 784921) and customer IDs (e.g. C zero zero one two five "
+        "seven) should be passed as-is to lookup tools — normalization is handled server-side.",
     ]
     if web_search_enabled:
         parts.extend(
             [
-                "Use search_web (or the web search results below) for weather, news, "
-                "and other live public information.",
-                "Never say you lack real-time data if web search results are provided below.",
+                "- Weather, news, stocks, exchange rates, and other live public facts: "
+                "use search_web and/or the web search results below. "
+                "Do not use the knowledge base for these.",
+                "- If the user asks for live public data and no web results are below yet, "
+                "your next line must be a search_web TOOL_CALL (do not guess).",
+                "- Never say you cannot access the internet or real-time data when "
+                "search_web is available or web results are provided below.",
+                "",
+                "Example (weather):",
+                'TOOL_CALL: {"name": "search_web", "arguments": {"query": "Seattle weather forecast today"}}',
             ]
         )
-    parts.append("Do not invent facts. Use tool results and the passages below.")
+    parts.append("Do not invent facts. Prefer tool results and the passages below.")
     if web_block and not web_block.startswith("Error:"):
-        parts.extend(["", "Web search results (live public data):", web_block])
+        parts.extend(
+            [
+                "",
+                "Web search results (live public data — use these for the user's question):",
+                web_block,
+            ]
+        )
     elif web_block:
         parts.extend(["", "Web search note:", web_block])
     if rag_block:
-        parts.extend(["", "Knowledge passages (may be incomplete):", rag_block])
+        parts.extend(["", "Knowledge passages (Alex / Horizon Store — not for weather/news):", rag_block])
     return "\n".join(parts)
 
 
@@ -293,11 +345,25 @@ def sanitize_agent_reply(text: str) -> str:
 
 
 def _parse_tool_call(text: str) -> dict[str, Any] | None:
-    m = _TOOL_RE.search(text.strip())
+    stripped = text.strip()
+    for line in stripped.splitlines():
+        candidate = line.strip()
+        if not candidate.upper().startswith("TOOL_CALL:"):
+            continue
+        payload_str = candidate.split(":", 1)[1].strip()
+        payload = _load_tool_call_payload(payload_str)
+        if payload is not None:
+            return payload
+
+    m = _TOOL_RE.search(stripped)
     if not m:
         return None
+    return _load_tool_call_payload(m.group(1))
+
+
+def _load_tool_call_payload(payload_str: str) -> dict[str, Any] | None:
     try:
-        payload = json.loads(m.group(1))
+        payload = json.loads(payload_str)
     except json.JSONDecodeError:
         return None
     if not isinstance(payload, dict) or "name" not in payload:

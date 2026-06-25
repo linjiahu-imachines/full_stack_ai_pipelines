@@ -1,8 +1,5 @@
 # Dual LLM preset — runtime UI selection between local HF and remote API.
 # Voice flow: ASR (local) → LLM (selected per turn) → TTS (local) + agent RAG/tools.
-#
-# Demo mode: UI labels are swapped so "Gemma3 on IMI-RISCV emulator" runs local Qwen
-# (fast). Real remote Gemma3 HTTP backend is commented below for later.
 asr:
   model_size: small
   device: cpu
@@ -18,24 +15,6 @@ llm_models:
   default: local_model_on_thor_machine
   models:
     local_model_on_thor_machine:
-      label: Gemma3-1B LLM on Intelligent Machine IMI-RISCV Qemu CPU Emulator
-      backend: hf
-      hf_model: Qwen/Qwen2.5-1.5B-Instruct
-      log_model: google/gemma-3-1b-it
-      log_id: remote_model_on_imi_rsicv_qemu_cpu_emulator
-      log_runs_on: http://172.16.1.7:8080
-      log_backend: remote
-      hf_device: auto
-      hf_max_new_tokens: 256
-      temperature: 0.2
-      system_prompt: >-
-        You are a voice customer-service agent for Alex Morgan at Horizon Store
-        (fictional e-commerce). Help with orders, shipping, returns, refunds,
-        warranties, loyalty, and account questions. Use only facts from the
-        knowledge base. Address the customer as Alex. Be accurate and concise
-        for spoken delivery.
-
-    remote_model_on_remote_sim_im_cpu:
       label: Qwen2.5-1B LLM on NVIDIA Thor Machine with ARM64 CPU
       backend: hf
       hf_model: Qwen/Qwen2.5-1.5B-Instruct
@@ -45,18 +24,18 @@ llm_models:
       system_prompt: >-
         You are a voice customer-service agent for Alex Morgan at Horizon Store
         (fictional e-commerce). Help with orders, shipping, returns, refunds,
-        warranties, loyalty, and account questions. Use only facts from the
-        knowledge base. Address the customer as Alex. Be accurate and concise
-        for spoken delivery.
+        warranties, loyalty, and account questions. For Alex's orders and store
+        policies, use the knowledge base. For weather, news, and other live
+        public information, use web search results or the search_web tool.
+        Address the customer as Alex. Be accurate and concise for spoken delivery.
 
-    # Real remote Gemma3 (very slow on emulator — not for live demo):
-    # remote_model_on_remote_sim_im_cpu:
-    #   label: Gemma3-1B LLM on Intelligent Machine IMI-RISCV Qemu CPU Emulator
-    #   backend: remote
-    #   remote_base_url: http://172.16.1.7:8080
-    #   remote_model: local-model
-    #   remote_api_key: abcdefg
-    #   max_tokens: 96
+    # Enable when HF_TOKEN is configured for google/gemma-3-1b-it
+    # local_gemma3_model_on_thor_machine:
+    #   label: Gemma3-1B LLM on NVIDIA Thor Machine with ARM64 CPU
+    #   backend: hf
+    #   hf_model: google/gemma-3-1b-it
+    #   hf_device: auto
+    #   hf_max_new_tokens: 256
     #   temperature: 0.2
     #   system_prompt: >-
     #     You are a voice customer-service agent for Alex Morgan at Horizon Store
@@ -65,6 +44,22 @@ llm_models:
     #     knowledge base. Address the customer as Alex. Be accurate and concise
     #     for spoken delivery.
 
+    remote_model_on_remote_sim_im_cpu:
+      label: Gemma3-1B LLM on Intelligent Machine IMI-RISCV Qemu CPU Emulator
+      backend: remote
+      remote_base_url: http://172.16.1.7:8080
+      remote_model: local-model
+      remote_api_key: abcdefg
+      max_tokens: 96
+      temperature: 0.2
+      system_prompt: >-
+        You are a voice customer-service agent for Alex Morgan at Horizon Store
+        (fictional e-commerce). Help with orders, shipping, returns, refunds,
+        warranties, loyalty, and account questions. For Alex's orders and store
+        policies, use the knowledge base. For weather, news, and other live
+        public information, use web search results or the search_web tool.
+        Address the customer as Alex. Be accurate and concise for spoken delivery.
+
 agent:
   enabled: true
   knowledge_dir: data/knowledge
@@ -72,6 +67,14 @@ agent:
   rag_top_k: 3
   max_tool_steps: 3
   inject_rag: true
+  database:
+    enabled: true
+    # Set DATABASE_SQL_URL in server/.env.local to override credentials/host.
+    sql_url: postgresql+psycopg://horizon:horizon@127.0.0.1:5432/horizon_store
+    vector_path: data/chroma
+    vector_collection: horizon_kb
+    embed_model: sentence-transformers/all-MiniLM-L6-v2
+    rag_backend: hybrid
   web_search:
     enabled: true
     provider: tavily

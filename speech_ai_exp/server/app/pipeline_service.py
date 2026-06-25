@@ -6,6 +6,8 @@ import threading
 from pathlib import Path
 from typing import Any
 
+from sqlalchemy import func, select
+
 from staged_voice.backends import FasterWhisperASR
 from staged_voice.backends.base_types import ChatMessage
 from staged_voice.backends.tts_factory import make_tts
@@ -22,6 +24,12 @@ from staged_voice.profiling import StageProfile
 from app.agent.rag import KnowledgeBase
 from app.agent.service import AgentConfig, AgentService
 from app.agent.web_search import WebSearchConfig
+from app.db.config import DatabaseConfig
+from app.db.hybrid_rag import HybridKnowledgeBase
+from app.db.repositories import CommerceRepository
+from app.db.models import Customer
+from app.db.session import get_session_factory, init_sql_schema
+from app.db.vector_store import VectorKnowledgeStore
 from app.llm_registry import LlmRegistry, parse_llm_registry
 
 logger = logging.getLogger(__name__)
@@ -61,6 +69,7 @@ def _parse_agent_config(yaml_data: dict[str, Any], server_root: Path) -> AgentCo
         max_tool_steps=int(raw.get("max_tool_steps", 3)),
         inject_rag=bool(raw.get("inject_rag", True)),
         web_search=WebSearchConfig.from_yaml(raw),
+        database=DatabaseConfig.from_yaml(raw, server_root=server_root),
     )
 
 
@@ -108,6 +117,9 @@ class PipelineService:
             "max_tool_steps": self._agent_cfg.max_tool_steps,
             "rag_top_k": self._agent_cfg.rag_top_k,
             "web_search_enabled": self._agent.web_search_enabled,
+            "database_enabled": self._agent.commerce_enabled,
+            "rag_backend": getattr(self._agent, "rag_backend", "bm25"),
+            "vector_doc_count": getattr(self._agent, "vector_doc_count", 0),
         }
 
     def list_llm_models(self) -> list[dict[str, Any]]:
@@ -151,15 +163,43 @@ class PipelineService:
             self._pipe = StagedVoicePipeline(cfg, asr, default_llm, tts)
 
             if self._agent_cfg.enabled:
-                kb = KnowledgeBase(
+                bm25 = KnowledgeBase(
                     Path(self._agent_cfg.knowledge_dir),
                     index_path=Path(self._agent_cfg.knowledge_index),
                 )
+                commerce: CommerceRepository | None = None
+                vector_store: VectorKnowledgeStore | None = None
+                db_cfg = self._agent_cfg.database
+                if db_cfg.enabled:
+                    init_sql_schema(db_cfg.sql_url)
+                    session_factory = get_session_factory(db_cfg.sql_url)
+                    with session_factory() as session:
+                        count = session.scalar(select(func.count()).select_from(Customer)) or 0
+                        if count == 0:
+                            from app.db.seed import seed_demo_data
+
+                            seed_demo_data(session)
+                            logger.info("Seeded empty commerce database")
+                    commerce = CommerceRepository(session_factory)
+                    vector_store = VectorKnowledgeStore(
+                        persist_path=Path(db_cfg.vector_path),
+                        collection_name=db_cfg.vector_collection,
+                        embed_model=db_cfg.embed_model,
+                    )
+                kb: KnowledgeBase | HybridKnowledgeBase = HybridKnowledgeBase(
+                    bm25,
+                    vector_store,
+                    rag_backend=db_cfg.rag_backend if db_cfg.enabled else "bm25",
+                )
                 n = kb.load()
-                self._agent = AgentService(self._agent_cfg, kb)
+                self._agent = AgentService(self._agent_cfg, kb, commerce=commerce)
                 logger.info(
-                    "Agent enabled (knowledge_chunks=%s, dir=%s, index=%s, from_index=%s)",
+                    "Agent enabled (knowledge_chunks=%s, rag_backend=%s, vector_docs=%s, "
+                    "commerce_db=%s, dir=%s, index=%s, from_index=%s)",
                     n,
+                    getattr(kb, "rag_backend", "bm25"),
+                    getattr(kb, "vector_doc_count", 0),
+                    commerce is not None,
                     self._agent_cfg.knowledge_dir,
                     kb.index_path,
                     kb.loaded_from_index,
@@ -258,6 +298,52 @@ class PipelineService:
                 wav_path,
                 history=history,
                 out_wav_path=out_wav_path,
+                agent_runner=agent_runner,
+                session_memory=mem,
+                llm=llm,
+                llm_cfg=llm_cfg,
+                llm_model_id=model_info.id,
+                llm_model_label=model_info.label,
+                tools_enabled=use_tools,
+            )
+
+    def run_text_turn(
+        self,
+        text: str,
+        history: list[ChatMessage],
+        out_wav_path: Path | None,
+        *,
+        session_memory: dict[str, str] | None = None,
+        llm_model: str | None = None,
+        tools_enabled: bool = True,
+        speak_reply: bool = False,
+    ) -> StageProfile:
+        if not self._ready or self._pipe is None or self._llm_registry is None:
+            raise RuntimeError(self._error or "Pipeline not loaded")
+        mem = session_memory if session_memory is not None else {}
+        use_tools = tools_enabled and self._agent is not None
+        llm, llm_cfg, model_info = self._llm_registry.resolve(llm_model)
+        logger.info(
+            "Text turn LLM selected | id=%s | label=%s | backend=%s | model=%s | runs_on=%s | tools=%s | speak=%s",
+            describe_model_id(llm_cfg, model_info.id),
+            model_info.label,
+            describe_llm_backend(llm_cfg),
+            describe_model_name(llm_cfg),
+            describe_llm_host(llm_cfg),
+            "on" if use_tools else "off",
+            speak_reply,
+        )
+        agent_runner = (
+            self._agent_runner(mem, model_id=model_info.id, model_label=model_info.label)
+            if use_tools
+            else None
+        )
+        with self._lock:
+            return self._pipe.run_turn(
+                transcript=text,
+                speak_reply=speak_reply,
+                history=history,
+                out_wav_path=out_wav_path if speak_reply else None,
                 agent_runner=agent_runner,
                 session_memory=mem,
                 llm=llm,

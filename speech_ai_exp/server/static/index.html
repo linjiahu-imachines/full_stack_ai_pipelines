@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Intellengent Machines Agentic Assitant</title>
-  <link rel="stylesheet" href="/styles.css" />
-  <script src="/app.js" defer></script>
+  <link rel="stylesheet" href="/styles.css?v=4" />
+  <script src="/app.js?v=4" defer></script>
 </head>
 <body>
   <header class="site-header">
@@ -40,19 +40,40 @@
     </section>
 
     <div id="chat-log" class="chat-log">
-      <p class="empty-hint">Start a <strong>New conversation</strong>, then click <strong>Start listening</strong> and speak.</p>
+      <p class="empty-hint">Start a <strong>New conversation</strong>, then use <strong>Voice</strong> or <strong>Text</strong> mode below.</p>
     </div>
 
     <p id="listen-status" class="listen-status hidden" aria-live="polite"></p>
     <div id="busy" class="busy hidden">Processing turn…</div>
 
-    <section class="controls">
+    <section class="input-mode-tabs" role="tablist" aria-label="Input mode">
+      <button type="button" class="mode-tab active" id="mode-tab-voice" data-mode="voice" role="tab" aria-selected="true" aria-controls="voice-controls">
+        Voice
+      </button>
+      <button type="button" class="mode-tab" id="mode-tab-text" data-mode="text" role="tab" aria-selected="false" aria-controls="text-controls">
+        Text
+      </button>
+    </section>
+
+    <section id="voice-controls" class="controls" role="tabpanel">
       <button type="button" id="btn-record" class="btn primary">Start listening</button>
       <button type="button" id="btn-stop" class="btn" disabled>Stop listening</button>
       <label class="btn upload-label">
         Upload WAV
         <input type="file" id="file-upload" accept="audio/*,.wav,.webm,.ogg,.mp3,.m4a" hidden />
       </label>
+    </section>
+
+    <section id="text-controls" class="text-controls hidden" role="tabpanel">
+      <label for="text-input" class="sr-only">Your message</label>
+      <textarea id="text-input" rows="3" placeholder="Type your message… (Enter to send, Shift+Enter for new line)"></textarea>
+      <div class="text-controls-row">
+        <label class="speak-reply-label">
+          <input type="checkbox" id="speak-reply" />
+          Speak reply (TTS)
+        </label>
+        <button type="button" id="btn-send-text" class="btn primary">Send</button>
+      </div>
     </section>
   </main>
 

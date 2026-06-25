@@ -43,10 +43,11 @@ class WebSearchConfig:
 
 _AUTO_WEB_PATTERNS = re.compile(
     r"\b("
-    r"weather|forecast|temperature|rain|snow|humidity|"
+    r"weather|forecast|temperature|rain|snow|humidity|sunny|cloudy|"
     r"today|tonight|tomorrow|right now|currently|current|latest|live|real[- ]?time|"
     r"news|headline|stock price|exchange rate|"
-    r"who is the (ceo|president|prime minister)"
+    r"who is the (ceo|president|prime minister)|"
+    r"on the internet|online|public information"
     r")\b",
     re.I,
 )

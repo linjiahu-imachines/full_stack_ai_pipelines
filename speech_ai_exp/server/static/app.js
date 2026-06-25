@@ -17,10 +17,122 @@ const micBanner = document.getElementById("mic-banner");
 const fileUpload = document.getElementById("file-upload");
 const llmModelSelect = document.getElementById("llm-model-select");
 const toolsEnabledSelect = document.getElementById("tools-enabled-select");
+const inputModeSelect = null; // legacy; mode uses tabs
+const modeTabVoice = document.getElementById("mode-tab-voice");
+const modeTabText = document.getElementById("mode-tab-text");
+const voiceControls = document.getElementById("voice-controls");
+const textControls = document.getElementById("text-controls");
+const textInput = document.getElementById("text-input");
+const btnSendText = document.getElementById("btn-send-text");
+const speakReplyCheckbox = document.getElementById("speak-reply");
 
 const LLM_MODEL_STORAGE_KEY = "chat_llm_model_id";
 const TOOLS_ENABLED_STORAGE_KEY = "chat_tools_enabled";
+const INPUT_MODE_STORAGE_KEY = "chat_input_mode";
+const SPEAK_REPLY_STORAGE_KEY = "chat_speak_reply";
+
+let sessionId = localStorage.getItem("chat_session_id") || null;
 let llmModels = [];
+
+/** Voice-activity detection tuning (browser mic). */
+const VAD = {
+  SILENCE_MS: 1000,
+  MIN_SPEECH_MS: 400,
+  MAX_TURN_MS: 30000,
+  TICK_MS: 50,
+  NOISE_ADAPT: 0.92,
+  SPEECH_MULT: 2.8,
+  MIN_THRESHOLD: 0.012,
+};
+
+const autoVoice = {
+  enabled: false,
+  phase: "off", // off | armed | speaking | processing
+  stream: null,
+  audioContext: null,
+  analyser: null,
+  vadTimer: null,
+  mediaRecorder: null,
+  chunks: [],
+  noiseFloor: 0.01,
+  speechStartedAt: 0,
+  recordStartedAt: 0,
+  silenceStartedAt: null,
+  finishing: false,
+};
+
+function isTextMode() {
+  return modeTabText?.classList.contains("active") ?? false;
+}
+
+function setInputMode(mode) {
+  const text = mode === "text";
+  if (modeTabVoice) {
+    modeTabVoice.classList.toggle("active", !text);
+    modeTabVoice.setAttribute("aria-selected", text ? "false" : "true");
+  }
+  if (modeTabText) {
+    modeTabText.classList.toggle("active", text);
+    modeTabText.setAttribute("aria-selected", text ? "true" : "false");
+  }
+  localStorage.setItem(INPUT_MODE_STORAGE_KEY, text ? "text" : "voice");
+  applyInputModeUi();
+  if (sessionId && chatLog.querySelectorAll(".turn-group").length === 0) {
+    chatLog.innerHTML = emptyHintHtml();
+  }
+  if (text && textInput) textInput.focus();
+}
+
+function applyInputModeUi() {
+  const text = isTextMode();
+  if (voiceControls) voiceControls.classList.toggle("hidden", text);
+  if (textControls) textControls.classList.toggle("hidden", !text);
+  if (micBanner && text) micBanner.classList.add("hidden");
+  else updateMicBanner();
+  if (text && autoVoice.enabled) stopAutoListen();
+}
+
+function populateInputModeSelect() {
+  const saved = localStorage.getItem(INPUT_MODE_STORAGE_KEY);
+  setInputMode(saved === "text" ? "text" : "voice");
+}
+
+function selectedInputMode() {
+  return isTextMode() ? "text" : "voice";
+}
+
+function emptyHintHtml() {
+  if (isTextMode()) {
+    return '<p class="empty-hint">Session ready. Type a message below and click <strong>Send</strong>.</p>';
+  }
+  return '<p class="empty-hint">Session ready. Click <strong>Start listening</strong> and speak.</p>';
+}
+
+function populateSpeakReplyCheckbox() {
+  if (!speakReplyCheckbox) return;
+  speakReplyCheckbox.checked = localStorage.getItem(SPEAK_REPLY_STORAGE_KEY) === "true";
+}
+
+function selectedSpeakReply() {
+  if (!speakReplyCheckbox) return false;
+  const on = speakReplyCheckbox.checked;
+  localStorage.setItem(SPEAK_REPLY_STORAGE_KEY, on ? "true" : "false");
+  return on;
+}
+
+if (modeTabVoice) {
+  modeTabVoice.addEventListener("click", () => setInputMode("voice"));
+}
+if (modeTabText) {
+  modeTabText.addEventListener("click", () => setInputMode("text"));
+}
+
+if (speakReplyCheckbox) {
+  speakReplyCheckbox.addEventListener("change", () => {
+    selectedSpeakReply();
+  });
+  populateSpeakReplyCheckbox();
+}
 
 function isSecureMicContext() {
   if (window.isSecureContext) return true;
@@ -64,35 +176,6 @@ function updateMicBanner() {
     "(<code>ssh -L 8000:127.0.0.1:8000 linhu@172.16.1.103</code>) " +
     "or <strong>Upload WAV</strong> to test without the mic.";
 }
-
-let sessionId = localStorage.getItem("chat_session_id") || null;
-
-/** Voice-activity detection tuning (browser mic). */
-const VAD = {
-  SILENCE_MS: 1000,
-  MIN_SPEECH_MS: 400,
-  MAX_TURN_MS: 30000,
-  TICK_MS: 50,
-  NOISE_ADAPT: 0.92,
-  SPEECH_MULT: 2.8,
-  MIN_THRESHOLD: 0.012,
-};
-
-const autoVoice = {
-  enabled: false,
-  phase: "off", // off | armed | speaking | processing
-  stream: null,
-  audioContext: null,
-  analyser: null,
-  vadTimer: null,
-  mediaRecorder: null,
-  chunks: [],
-  noiseFloor: 0.01,
-  speechStartedAt: 0,
-  recordStartedAt: 0,
-  silenceStartedAt: null,
-  finishing: false,
-};
 
 function rmsFromAnalyser(analyser) {
   const data = new Float32Array(analyser.fftSize);
@@ -472,22 +555,32 @@ function playReplyAudio(url) {
 function renderTurn(turn, sid) {
   const group = document.createElement("div");
   group.className = "turn-group";
+  const mode = turn.input_mode || "voice";
+  const modeBadge = mode === "text"
+    ? '<span class="turn-mode-badge">Text</span>'
+    : '<span class="turn-mode-badge">Voice</span>';
+  const userAudio = turn.user_audio
+    ? `<audio controls src="/api/sessions/${sid}/audio/${encodeURIComponent(turn.user_audio)}"></audio>`
+    : "";
+  const replyAudio = turn.reply_audio
+    ? `<audio controls src="/api/sessions/${sid}/audio/${encodeURIComponent(turn.reply_audio)}"></audio>`
+    : "";
   const userMsg = document.createElement("div");
   userMsg.className = "msg user";
   userMsg.innerHTML = `
     <div class="role">You</div>
     <div class="text">${escapeHtml(turn.user_transcript || "(no transcript)")}</div>
-    <audio controls src="/api/sessions/${sid}/audio/${encodeURIComponent(turn.user_audio)}"></audio>
+    ${userAudio}
   `;
   const asstMsg = document.createElement("div");
   asstMsg.className = "msg assistant";
   asstMsg.innerHTML = `
     <div class="role">Assistant</div>
     <div class="text">${escapeHtml(turn.assistant_reply || "")}</div>
-    <audio controls src="/api/sessions/${sid}/audio/${encodeURIComponent(turn.reply_audio)}"></audio>
+    ${replyAudio}
   `;
   group.appendChild(document.createElement("div")).className = "turn-header";
-  group.querySelector(".turn-header").textContent = `Turn ${turn.turn_index}`;
+  group.querySelector(".turn-header").innerHTML = `Turn ${turn.turn_index}${modeBadge}`;
   group.appendChild(userMsg);
   group.appendChild(asstMsg);
   return group;
@@ -520,7 +613,7 @@ function renderSession(session) {
   const sid = session.session_id;
   chatLog.innerHTML = "";
   if (turns.length === 0) {
-    chatLog.innerHTML = '<p class="empty-hint">Session ready. Click <strong>Start listening</strong> and speak.</p>';
+    chatLog.innerHTML = emptyHintHtml();
   } else {
     for (const t of turns) chatLog.appendChild(renderTurn(t, sid));
     chatLog.scrollTop = chatLog.scrollHeight;
@@ -642,12 +735,22 @@ document.querySelectorAll(".tab").forEach((tab) => {
   });
 });
 
+async function setTurnBusy(busy) {
+  if (busy) {
+    setBusyMessage();
+    busyEl.classList.remove("hidden");
+  } else {
+    busyEl.classList.add("hidden");
+  }
+  btnRecord.disabled = busy || autoVoice.enabled;
+  btnStop.disabled = busy || !autoVoice.enabled || autoVoice.phase === "processing";
+  if (btnSendText) btnSendText.disabled = busy;
+  if (textInput) textInput.disabled = busy;
+}
+
 async function sendTurn(blob) {
   if (!sessionId) await createSession(true);
-  setBusyMessage();
-  busyEl.classList.remove("hidden");
-  btnRecord.disabled = true;
-  btnStop.disabled = true;
+  await setTurnBusy(true);
   const form = new FormData();
   form.append("audio", blob, "utterance.webm");
   const modelId = selectedLlmModelId();
@@ -661,7 +764,7 @@ async function sendTurn(blob) {
     const groups = chatLog.querySelectorAll(".turn-group");
     const el = groups[groups.length - 1]?.querySelector(".msg.assistant audio");
     if (el) el.play().catch(() => playReplyAudio(j.reply_audio_url));
-    else playReplyAudio(j.reply_audio_url);
+    else if (j.reply_audio_url) playReplyAudio(j.reply_audio_url);
     updateContextBanner(j.turn_count ?? 0);
   } catch (e) {
     const errBox = document.createElement("div");
@@ -669,7 +772,7 @@ async function sendTurn(blob) {
     errBox.innerHTML = `<div class="role">Error</div><div class="text">${escapeHtml(e.message)}</div>`;
     chatLog.appendChild(errBox);
   } finally {
-    busyEl.classList.add("hidden");
+    await setTurnBusy(false);
     if (autoVoice.enabled) {
       resumeAutoListenAfterTurn();
     } else {
@@ -678,6 +781,40 @@ async function sendTurn(blob) {
       btnRecord.classList.remove("recording", "listening");
       updateListenUi();
     }
+  }
+}
+
+async function sendTextTurn() {
+  const text = textInput?.value?.trim() || "";
+  if (!text) return;
+  if (!sessionId) await createSession(true);
+  await setTurnBusy(true);
+  const payload = {
+    text,
+    llm_model: selectedLlmModelId() || null,
+    tools_enabled: selectedToolsEnabled(),
+    speak_reply: selectedSpeakReply(),
+  };
+  try {
+    const r = await fetch(`/api/sessions/${sessionId}/turn/text`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!r.ok) throw new Error(await r.text() || r.statusText);
+    const j = await r.json();
+    if (textInput) textInput.value = "";
+    await loadSession();
+    if (j.reply_audio_url) playReplyAudio(j.reply_audio_url);
+    updateContextBanner(j.turn_count ?? 0);
+  } catch (e) {
+    const errBox = document.createElement("div");
+    errBox.className = "msg assistant";
+    errBox.innerHTML = `<div class="role">Error</div><div class="text">${escapeHtml(e.message)}</div>`;
+    chatLog.appendChild(errBox);
+  } finally {
+    await setTurnBusy(false);
+    if (textInput && !isTextMode()) textInput.disabled = false;
   }
 }
 
@@ -707,7 +844,21 @@ btnStop.addEventListener("click", async () => {
   }
 });
 
+if (btnSendText) {
+  btnSendText.addEventListener("click", () => sendTextTurn());
+}
+
+if (textInput) {
+  textInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendTextTurn();
+    }
+  });
+}
+
 (async () => {
+  populateInputModeSelect();
   updateMicBanner();
   await checkHealth();
   await loadLlmModels();

@@ -19,8 +19,9 @@ class TurnRecord:
     created_at: str
     user_transcript: str
     assistant_reply: str
-    user_audio: str
-    reply_audio: str
+    user_audio: str = ""
+    reply_audio: str = ""
+    input_mode: str = "voice"
     timings: dict[str, float] = field(default_factory=dict)
     agent: dict[str, Any] = field(default_factory=dict)
 
@@ -34,8 +35,9 @@ class TurnRecord:
             created_at=str(data["created_at"]),
             user_transcript=str(data["user_transcript"]),
             assistant_reply=str(data["assistant_reply"]),
-            user_audio=str(data["user_audio"]),
-            reply_audio=str(data["reply_audio"]),
+            user_audio=str(data.get("user_audio") or ""),
+            reply_audio=str(data.get("reply_audio") or ""),
+            input_mode=str(data.get("input_mode") or "voice"),
             timings=dict(data.get("timings") or {}),
             agent=dict(data.get("agent") or {}),
         )

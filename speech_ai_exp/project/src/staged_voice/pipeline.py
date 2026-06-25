@@ -32,8 +32,10 @@ class StagedVoicePipeline:
 
     def run_turn(
         self,
-        wav_path: Path,
+        wav_path: Path | None = None,
         *,
+        transcript: str | None = None,
+        speak_reply: bool = True,
         history: list[ChatMessage] | None = None,
         out_wav_path: Path | None = None,
         agent_runner: AgentRunner | None = None,
@@ -44,7 +46,6 @@ class StagedVoicePipeline:
         llm_model_label: str | None = None,
         tools_enabled: bool | None = None,
     ) -> StageProfile:
-        wav_path = wav_path.expanduser().resolve()
         history = list(history or [])
         active_llm = llm if llm is not None else self._llm
         active_cfg = llm_cfg if llm_cfg is not None else self._cfg
@@ -55,13 +56,29 @@ class StagedVoicePipeline:
         if llm_model_id:
             meta["llm_model"] = llm_model_id
 
-        t_asr0 = time.perf_counter()
-        transcript, asr_meta = self._asr.transcribe_file(wav_path)
-        t_asr1 = time.perf_counter()
-        asr_s = t_asr1 - t_asr0
-        duration = float(asr_meta.get("audio_duration_s") or 0.0)
-        asr_rtf = (asr_s / duration) if duration > 0 else 0.0
+        if transcript is not None:
+            transcript = transcript.strip()
+            if not transcript:
+                raise ValueError("Empty message")
+            asr_s = 0.0
+            asr_rtf = 0.0
+            duration = 0.0
+            asr_meta: dict[str, Any] = {"skipped": True, "input_mode": "text"}
+            audio_path = ""
+        else:
+            if wav_path is None:
+                raise ValueError("wav_path required for voice input")
+            wav_path = wav_path.expanduser().resolve()
+            audio_path = str(wav_path)
+            t_asr0 = time.perf_counter()
+            transcript, asr_meta = self._asr.transcribe_file(wav_path)
+            t_asr1 = time.perf_counter()
+            asr_s = t_asr1 - t_asr0
+            duration = float(asr_meta.get("audio_duration_s") or 0.0)
+            asr_rtf = (asr_s / duration) if duration > 0 else 0.0
+            asr_meta["input_mode"] = "voice"
         meta["asr"] = asr_meta
+        meta["input_mode"] = asr_meta.get("input_mode", "voice")
 
         llm_messages: list[ChatMessage] = list(history) + [
             {"role": "user", "content": transcript},
@@ -148,22 +165,26 @@ class StagedVoicePipeline:
         if agent_meta:
             meta["agent"] = agent_meta
 
-        if out_wav_path is not None:
-            out_wav = out_wav_path.expanduser().resolve()
-            out_wav.parent.mkdir(parents=True, exist_ok=True)
-        else:
-            out_dir = Path(self._cfg.audio_out_dir)
-            out_dir.mkdir(parents=True, exist_ok=True)
-            out_wav = out_dir / f"{wav_path.stem}_reply.wav"
-
-        t_tts0 = time.perf_counter()
-        tts_meta = self._tts.synthesize_file(reply_text, out_wav)
-        t_tts1 = time.perf_counter()
-        tts_s = t_tts1 - t_tts0
+        out_wav: Path | None = None
+        tts_s = 0.0
+        tts_meta: dict[str, Any] = {"skipped": not speak_reply}
+        if speak_reply:
+            if out_wav_path is not None:
+                out_wav = out_wav_path.expanduser().resolve()
+                out_wav.parent.mkdir(parents=True, exist_ok=True)
+            else:
+                out_dir = Path(self._cfg.audio_out_dir)
+                out_dir.mkdir(parents=True, exist_ok=True)
+                stem = wav_path.stem if wav_path is not None else "text_turn"
+                out_wav = out_dir / f"{stem}_reply.wav"
+            t_tts0 = time.perf_counter()
+            tts_meta = self._tts.synthesize_file(reply_text, out_wav)
+            t_tts1 = time.perf_counter()
+            tts_s = t_tts1 - t_tts0
         meta["tts"] = tts_meta
 
         return StageProfile(
-            audio_path=str(wav_path),
+            audio_path=audio_path,
             audio_duration_s=duration,
             asr_s=asr_s,
             asr_rtf=asr_rtf,
@@ -174,6 +195,6 @@ class StagedVoicePipeline:
             tts_s=tts_s,
             transcript=transcript,
             reply_text=reply_text,
-            output_wav_path=str(out_wav),
+            output_wav_path=str(out_wav) if out_wav is not None else None,
             meta=meta,
         )

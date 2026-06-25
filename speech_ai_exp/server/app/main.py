@@ -75,8 +75,9 @@ class TurnResponse(BaseModel):
     turn_index: int
     transcript: str
     reply_text: str
-    reply_audio_url: str
-    user_audio_url: str
+    reply_audio_url: str = ""
+    user_audio_url: str = ""
+    input_mode: str = "voice"
     timings: Timings
     context_messages: int
     turn_count: int
@@ -87,6 +88,13 @@ class TurnResponse(BaseModel):
     llm_model_label: str = ""
     tools_enabled: bool = True
     llm_usage: LlmUsage | None = None
+
+
+class TextTurnRequest(BaseModel):
+    text: str
+    llm_model: str | None = None
+    tools_enabled: bool = True
+    speak_reply: bool = False
 
 
 class LlmModelOption(BaseModel):
@@ -168,6 +176,102 @@ def _parse_form_bool(value: str | None, *, default: bool = True) -> bool:
     return str(value).strip().lower() in ("1", "true", "yes", "on")
 
 
+def _llm_usage_from_profile(profile, agent_meta: dict, llm_meta: dict) -> LlmUsage | None:
+    usage_raw = dict(llm_meta.get("usage") or agent_meta.get("llm_usage") or {})
+    if not usage_raw:
+        return None
+    return LlmUsage(
+        prompt_chars=int(usage_raw.get("prompt_chars", 0)),
+        prompt_tokens_est=float(usage_raw.get("prompt_tokens_est", 0)),
+        system_chars=int(usage_raw.get("system_chars", 0)),
+        messages_chars=int(usage_raw.get("messages_chars", 0)),
+        output_chars=int(usage_raw.get("output_chars", 0)),
+        output_tokens_est=float(usage_raw.get("output_tokens_est", 0)),
+        llm_calls=int(usage_raw.get("llm_calls", 1)),
+    )
+
+
+def _resolve_model_label(llm_model_id: str, fallback: str = "") -> str:
+    for m in pipeline.list_llm_models():
+        if m["id"] == llm_model_id:
+            return str(m["label"])
+    return fallback or llm_model_id
+
+
+def _save_turn_and_respond(
+    *,
+    session: Session,
+    session_id: str,
+    turn_index: int,
+    profile,
+    context_messages: int,
+    use_tools: bool,
+    llm_model_id: str,
+    model_label: str,
+    input_mode: str,
+    user_audio: str,
+    reply_audio: str,
+) -> TurnResponse:
+    agent_meta = dict(profile.meta.get("agent") or {})
+    llm_meta = dict(profile.meta.get("llm") or {})
+    llm_usage = _llm_usage_from_profile(profile, agent_meta, llm_meta)
+    usage_raw = dict(llm_meta.get("usage") or agent_meta.get("llm_usage") or {})
+    turn = TurnRecord(
+        turn_index=turn_index,
+        created_at=_utc_now(),
+        user_transcript=profile.transcript,
+        assistant_reply=profile.reply_text,
+        user_audio=user_audio,
+        reply_audio=reply_audio,
+        input_mode=input_mode,
+        timings={
+            "asr_s": profile.asr_s,
+            "llm_ttft_s": profile.llm_ttft_s,
+            "llm_generation_s": profile.llm_generation_s,
+            "tts_s": profile.tts_s,
+        },
+        agent={
+            **agent_meta,
+            "llm_model": llm_model_id,
+            "llm_model_label": model_label,
+            "tools_enabled": use_tools,
+            "llm_usage": usage_raw,
+            "input_mode": input_mode,
+        },
+    )
+    session.turns.append(turn)
+    sessions.update(session)
+    reply_audio_url = (
+        f"/api/sessions/{session_id}/audio/{reply_audio}" if reply_audio else ""
+    )
+    user_audio_url = (
+        f"/api/sessions/{session_id}/audio/{user_audio}" if user_audio else ""
+    )
+    return TurnResponse(
+        turn_index=turn_index,
+        transcript=profile.transcript,
+        reply_text=profile.reply_text,
+        reply_audio_url=reply_audio_url,
+        user_audio_url=user_audio_url,
+        input_mode=input_mode,
+        timings=Timings(
+            asr_s=profile.asr_s,
+            llm_ttft_s=profile.llm_ttft_s,
+            llm_generation_s=profile.llm_generation_s,
+            tts_s=profile.tts_s,
+        ),
+        context_messages=context_messages,
+        turn_count=len(session.turns),
+        rag_sources=list(agent_meta.get("rag_sources") or []),
+        tool_calls=list(agent_meta.get("tool_calls") or []),
+        agent_enabled=pipeline.agent_enabled,
+        llm_model=llm_model_id,
+        llm_model_label=model_label,
+        tools_enabled=use_tools,
+        llm_usage=llm_usage,
+    )
+
+
 @app.post("/api/sessions/{session_id}/turn", response_model=TurnResponse)
 async def post_turn(
     session_id: str,
@@ -227,67 +331,83 @@ async def post_turn(
     finally:
         tmp_path.unlink(missing_ok=True)
 
-    agent_meta = dict(profile.meta.get("agent") or {})
     llm_meta = dict(profile.meta.get("llm") or {})
-    usage_raw = dict(llm_meta.get("usage") or agent_meta.get("llm_usage") or {})
-    llm_usage = (
-        LlmUsage(
-            prompt_chars=int(usage_raw.get("prompt_chars", 0)),
-            prompt_tokens_est=float(usage_raw.get("prompt_tokens_est", 0)),
-            system_chars=int(usage_raw.get("system_chars", 0)),
-            messages_chars=int(usage_raw.get("messages_chars", 0)),
-            output_chars=int(usage_raw.get("output_chars", 0)),
-            output_tokens_est=float(usage_raw.get("output_tokens_est", 0)),
-            llm_calls=int(usage_raw.get("llm_calls", 1)),
-        )
-        if usage_raw
-        else None
-    )
     llm_model_id = str(llm_meta.get("model_id") or llm_model or "")
-    model_label = llm_model_id
-    for m in pipeline.list_llm_models():
-        if m["id"] == llm_model_id:
-            model_label = str(m["label"])
-            break
-    turn = TurnRecord(
+    model_label = _resolve_model_label(llm_model_id, llm_model_id)
+    return _save_turn_and_respond(
+        session=session,
+        session_id=session_id,
         turn_index=turn_index,
-        created_at=_utc_now(),
-        user_transcript=profile.transcript,
-        assistant_reply=profile.reply_text,
+        profile=profile,
+        context_messages=context_messages,
+        use_tools=use_tools,
+        llm_model_id=llm_model_id,
+        model_label=model_label,
+        input_mode="voice",
         user_audio=user_wav.name,
         reply_audio=reply_name,
-        timings={
-            "asr_s": profile.asr_s,
-            "llm_ttft_s": profile.llm_ttft_s,
-            "llm_generation_s": profile.llm_generation_s,
-            "tts_s": profile.tts_s,
-        },
-        agent={**agent_meta, "llm_model": llm_model_id, "llm_model_label": model_label, "tools_enabled": use_tools, "llm_usage": usage_raw},
     )
-    session.turns.append(turn)
-    sessions.update(session)
 
-    return TurnResponse(
+
+@app.post("/api/sessions/{session_id}/turn/text", response_model=TurnResponse)
+async def post_text_turn(session_id: str, body: TextTurnRequest) -> TurnResponse:
+    session = _require_session(session_id)
+    if not pipeline.ready:
+        raise HTTPException(503, pipeline.error or "Pipeline not ready")
+
+    text = body.text.strip()
+    if not text:
+        raise HTTPException(400, "Message text is required")
+
+    audio_dir = sessions.session_audio_dir(session_id)
+    turn_index = len(session.turns) + 1
+    reply_name = f"turn_{turn_index:03d}_reply.wav"
+    reply_path = audio_dir / reply_name if body.speak_reply else None
+    history = session.history_messages()
+    context_messages = len(history)
+
+    try:
+        profile = pipeline.run_text_turn(
+            text,
+            history=history,
+            out_wav_path=reply_path,
+            session_memory=session.agent_memory,
+            llm_model=body.llm_model,
+            tools_enabled=body.tools_enabled,
+            speak_reply=body.speak_reply,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    except RuntimeError as e:
+        msg = str(e)
+        if "timed out" in msg.lower() or "unreachable" in msg.lower():
+            raise HTTPException(504, msg) from e
+        raise HTTPException(400, msg) from e
+    except TimeoutError as e:
+        raise HTTPException(
+            504,
+            "LLM request timed out. Try the local Qwen model or increase REMOTE_LLM_TIMEOUT_SEC.",
+        ) from e
+    except Exception as e:
+        logger.exception("Text turn failed")
+        raise HTTPException(500, f"Pipeline error: {e}") from e
+
+    llm_meta = dict(profile.meta.get("llm") or {})
+    llm_model_id = str(llm_meta.get("model_id") or body.llm_model or "")
+    model_label = _resolve_model_label(llm_model_id, llm_model_id)
+    reply_audio = reply_name if body.speak_reply and profile.output_wav_path else ""
+    return _save_turn_and_respond(
+        session=session,
+        session_id=session_id,
         turn_index=turn_index,
-        transcript=profile.transcript,
-        reply_text=profile.reply_text,
-        reply_audio_url=f"/api/sessions/{session_id}/audio/{reply_name}",
-        user_audio_url=f"/api/sessions/{session_id}/audio/{user_wav.name}",
-        timings=Timings(
-            asr_s=profile.asr_s,
-            llm_ttft_s=profile.llm_ttft_s,
-            llm_generation_s=profile.llm_generation_s,
-            tts_s=profile.tts_s,
-        ),
+        profile=profile,
         context_messages=context_messages,
-        turn_count=len(session.turns),
-        rag_sources=list(agent_meta.get("rag_sources") or []),
-        tool_calls=list(agent_meta.get("tool_calls") or []),
-        agent_enabled=pipeline.agent_enabled,
-        llm_model=llm_model_id,
-        llm_model_label=model_label,
-        tools_enabled=use_tools,
-        llm_usage=llm_usage,
+        use_tools=body.tools_enabled and pipeline.agent_enabled,
+        llm_model_id=llm_model_id,
+        model_label=model_label,
+        input_mode="text",
+        user_audio="",
+        reply_audio=reply_audio,
     )
 
 
