@@ -127,13 +127,16 @@ Browser mic/WAV → ASR (local) → LLM (local OR remote) → TTS (local) → re
 
 ## One-time setup
 
-Run once on the host (or after a fresh clone):
+Run once on the host (or after a fresh clone). **Python must be 3.10–3.12** (Kokoro TTS does not support 3.13+).
 
 ```bash
 cd /home/linhu/projects/speech_ai_exp/project
+python3.12 -m venv .venv    # or any 3.10–3.12 interpreter
 source .venv/bin/activate
+python --version            # confirm not 3.13+
+pip install -U pip setuptools wheel
 pip install -e ".[asr-whisper,llm-hf,tts-kokoro,experiment]"
-cd ../server && pip install -e .
+cd ../server && pip install -e ".[vector]"
 sudo apt install -y espeak-ng ffmpeg
 ```
 
@@ -379,6 +382,7 @@ Supported formats: `.md`, `.txt`, `.rst` (not `.docx`).
 
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
+| `No matching distribution found for kokoro>=0.9.4` | Python 3.13+ (e.g. Conda base) | Recreate venv with Python 3.12: `python3.12 -m venv project/.venv`, activate, reinstall |
 | `address already in use` | Server already running | `curl .../health` or `pkill -f "uvicorn app.main:app"` |
 | Health never returns / hangs | Stuck turn or crashed process | `kill -9` the uvicorn PID, restart |
 | `pipeline_ready: false` | Model load error | Check terminal logs; for local LLM ensure HF cache/network OK |
